@@ -35,14 +35,14 @@ export default class GameEngine {
         ),
         vec3.fromValues(1.0, 1.0, 1.0),
         vec3.fromValues(
-          this.#p5Instance.random(10),
-          this.#p5Instance.random(10),
-          this.#p5Instance.random(10),
+          this.#p5Instance.random(0.1) - 0.05,
+          this.#p5Instance.random(0.1) - 0.05,
+          this.#p5Instance.random(0.1) - 0.05,
         ),
         vec3.fromValues(
-          this.#p5Instance.random(10),
-          this.#p5Instance.random(10),
-          this.#p5Instance.random(10),
+          this.#p5Instance.random(0.001),
+          this.#p5Instance.random(0.001),
+          this.#p5Instance.random(0.001),
         ),
         this.#p5Instance.random(10, 100),
         vec3.fromValues(
@@ -59,7 +59,40 @@ export default class GameEngine {
   init() {}
 
   update(dt) {
+    // обновляем старые позиции
+    for (let object of this.#objects) {
+      vec3.copy(object.prevPosition, object.position);
+      quat.copy(object.prevRotation, object.rotation);
+    }
 
+    // предварительно обновляем позиции и вращение
+    for (let object of this.#objects) {
+      vec3.scaleAndAdd(object.position, object.position, object.velocity, dt);
+
+      let wquat = quat.fromValues(
+        object.angularVelocity[0],
+        object.angularVelocity[1],
+        object.angularVelocity[2],
+        0.0,
+      );
+
+      quat.multiply(wquat, wquat, object.rotation);
+      quat.scale(wquat, wquat, dt * 0.5);
+      quat.add(object.rotation, object.rotation, wquat);
+      quat.normalize(object.rotation, object.rotation);
+    }
+
+    // коллизии или ограничени
+    // на box
+    // между собой
+    for (let object of this.#objects) {
+    }
+
+    // обновляем скорость по изменению позиции
+    for (let object of this.#objects) {
+      vec3.sub(object.velocity, object.position, object.prevPosition);
+      vec3.scale(object.velocity, object.velocity, 1.0 / dt);
+    }
   }
 
   draw() {
