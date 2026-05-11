@@ -37,23 +37,6 @@ export default class Simulation1 {
   }
 
   update(dt) {
-    // // расчет углового ускорения
-    // const a = vec3.create();
-
-    // const g = vec3.create();
-
-    // const inverseT = mat3.create();
-    // mat3.invert(inverseT, this.object.inertialTensor);
-
-    // mat3.multiplyVec3(
-    //   g,
-    //   this.object.inertialTensor,
-    //   this.object.angularVelocity,
-    // );
-
-    // const l = vec3.create();
-    // vec3.cross(l, this.object.angularVelocity, g);
-
     const dQuat = IntegrateQuat(
       this.object.rotation,
       this.object.angularVelocity,
@@ -67,6 +50,10 @@ export default class Simulation1 {
 
   draw() {
     this.p5Instance.camera(0, 0, 600, 0, 0, 0, 0, 1, 0);
+
+    this.p5Instance.fill(255, 0, 0);
+    
+    this.p5Instance.text("Front text", -120, -120, 50);
 
     this.object.draw();
   }

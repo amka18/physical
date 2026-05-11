@@ -25,9 +25,16 @@ const sketch1 = (p5) => {
   const simulation = new Simulation1(p5);
   const timer = new Timer();
   let state = SimulationStates.RUN;
+  let font;
+
+  p5.preload = () => {
+    font = p5.loadFont("../../../../../assets/font/font.otf");
+  };
 
   p5.setup = () => {
     p5.createCanvas(400, 400, p5.WEBGL);
+    p5.textFont(font);
+
     timer.reset();
   };
 
@@ -49,9 +56,16 @@ const sketch2 = (p5) => {
   const simulation = new Simulation2(p5);
   const timer = new Timer();
   let state = SimulationStates.RUN;
+  let font;
+
+  p5.preload = () => {
+    font = p5.loadFont("../../../../../assets/font/font.otf");
+  };
 
   p5.setup = () => {
     p5.createCanvas(400, 400, p5.WEBGL);
+    p5.textFont(font);
+
     timer.reset();
   };
 
@@ -73,9 +87,16 @@ const sketch3 = (p5) => {
   const simulation = new Simulation3(p5);
   const timer = new Timer();
   let state = SimulationStates.RUN;
+  let font;
+
+  p5.preload = () => {
+    font = p5.loadFont("../../../../../assets/font/font.otf");
+  };
 
   p5.setup = () => {
     p5.createCanvas(400, 400, p5.WEBGL);
+    p5.textFont(font);
+
     timer.reset();
   };
 
