@@ -1,4 +1,4 @@
-import GameEngine from "./simulation.js";
+import Simulation from "./simulation.js";
 
 class Timer {
   #timePoint = 0;
@@ -14,7 +14,7 @@ class Timer {
 }
 
 const sketch = (p5) => {
-  const gameEngine = new GameEngine(p5);
+  const simulation = new Simulation(p5);
   const timer = new Timer();
 
   p5.setup = () => {
@@ -26,10 +26,10 @@ const sketch = (p5) => {
     const dt = timer.getTime();
     timer.reset();
 
-    gameEngine.update(dt);
+    simulation.update(dt);
 
     p5.background(150);
-    gameEngine.draw();
+    simulation.draw();
   };
 };
 

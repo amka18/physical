@@ -1,17 +1,19 @@
 const { mat3, mat4, vec3, vec4, quat } = glMatrix;
 
-export default class GameObject {
+export default class SimulationObject {
   position;
   rotation;
   scale;
 
   prevPosition;
   velocity;
+
   prevRotation;
   angularVelocity;
 
   mass;
   inertialTensor;
+  invertInertialTensor;
   inertialWorldTensor;
 
   localVertices;
@@ -47,7 +49,7 @@ export default class GameObject {
 
     this.angularVelocity = angularVelocity
       ? vec3.clone(angularVelocity)
-      : vec3.create();
+      : vec3.fromValues(0.0, 0.0, 0.0);
 
     this.prevPosition = vec3.clone(this.position);
     this.prevRotation = quat.clone(this.rotation);
@@ -68,6 +70,9 @@ export default class GameObject {
       0.0,
       Izz,
     );
+
+    this.invertInertialTensor = mat3.create();
+    mat3.invert(this.invertInertialTensor, this.inertialTensor);
 
     this.inertialWorldTensor = mat3.create();
     this.updateWorldInertialTensor();
@@ -130,7 +135,6 @@ export default class GameObject {
 
   draw() {
     this.updateWorldVertices();
-    this.updateWorldInertialTensor();
 
     this.p5Instance.push();
     this.p5Instance.fill(this.color[0], this.color[1], this.color[2]);
