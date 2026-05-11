@@ -14,11 +14,7 @@ export default class Simulation1 {
     this.object = new SimulationObject(
       vec3.fromValues(100, 50, 30),
       vec3.fromValues(0.0, 0.0, 0.0),
-      vec3.fromValues(
-        this.p5Instance.random(-90, 90),
-        this.p5Instance.random(-90, 90),
-        this.p5Instance.random(-90, 90),
-      ),
+      vec3.fromValues(0.0, 0.0, 0.0),
       vec3.fromValues(1.0, 1.0, 1.0),
       vec3.fromValues(0.0, 0.0, 0.0),
       vec3.fromValues(
@@ -45,15 +41,15 @@ export default class Simulation1 {
     quat.add(this.object.rotation, this.object.rotation, dQuat);
     quat.normalize(this.object.rotation, this.object.rotation);
 
-    this.object.updateWorldInertialTensor();
+    // this.object.updateWorldInertialTensor();
   }
 
   draw() {
     this.p5Instance.camera(0, 0, 600, 0, 0, 0, 0, 1, 0);
 
     this.p5Instance.fill(255, 0, 0);
-    
-    this.p5Instance.text("Front text", -120, -120, 50);
+
+    this.p5Instance.text(10, -120, -120, 50);
 
     this.object.draw();
   }
