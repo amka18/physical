@@ -40,6 +40,36 @@ export default class Simulation1 {
   }
 
   update(dt) {
+    const torque = vec3.create();
+    vec3.cross(
+      torque,
+      this.object.angularVelocity,
+      this.object.angularMomentum,
+    );
+    vec3.scale(torque, torque, -1); // torque = -ω × L
+
+    // Шаг 2: Обновляем момент (явный Эйлер)
+    // L_new = L_old + dt * (-ω × L)
+    const newAngularMomentum = vec3.create();
+    vec3.scaleAndAdd(
+      newAngularMomentum,
+      this.object.angularMomentum,
+      torque,
+      dt,
+    );
+
+    // Шаг 3: Обновляем угловую скорость через новый момент
+    // ω = I⁻¹ * L_new
+    vec3.transformMat3(
+      this.object.angularVelocity,
+      newAngularMomentum,
+      this.object.invertInertialTensor,
+    );
+
+    // Шаг 4: Обновляем момент в объекте
+    vec3.copy(this.object.angularMomentum, newAngularMomentum);
+
+    // Шаг 5: Интегрируем вращение
     IntegrateQuatLocal(this.object.rotation, this.object.angularVelocity, dt);
   }
 

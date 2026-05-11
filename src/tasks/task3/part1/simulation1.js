@@ -34,9 +34,9 @@ export default class Simulation1 {
     );
 
     const worldAngularVelocity = vec3.fromValues(
-      this.p5Instance.random(-0.001, 0.001),
-      this.p5Instance.random(-0.001, 0.001),
-      this.p5Instance.random(-0.001, 0.001),
+      this.p5Instance.random(0.0, 0.01),
+      this.p5Instance.random(0.0, 0.01),
+      this.p5Instance.random(0.0, 0.01),
     );
 
     const worldInertialTensor = this.object.getWorldInertialTensor();
