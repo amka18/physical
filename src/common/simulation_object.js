@@ -74,7 +74,7 @@ export default class SimulationObject {
       : vec3.fromValues(0.0, 0.0, 0.0);
     this.prevAngularVelocity = vec3.clone(this.angularVelocity);
 
-    this._initializeInertiaTensor(
+    this.#initializeInertiaTensor(
       dimensions[0],
       dimensions[1],
       dimensions[2],
@@ -86,13 +86,23 @@ export default class SimulationObject {
 
     this.mass = mass;
 
-    this._initializeVertices(dimensions[0], dimensions[1], dimensions[2]);
+    this.#initializeVertices(dimensions[0], dimensions[1], dimensions[2]);
 
     this.color = color
       ? vec3.clone(color)
       : vec3.fromValues(200.0, 200.0, 200.0);
 
     this.p5Instance = p5Instance;
+  }
+
+  /**
+   *
+   * @returns {number}
+   */
+  getRotationKineticEnergy() {
+    this.updateAngularMomentum();
+    const energy = 0.5 * vec3.dot(this.angularVelocity, this.angularMomentum);
+    return energy;
   }
 
   /**
@@ -172,7 +182,7 @@ export default class SimulationObject {
    * Отрисовка объекта
    */
   draw() {
-    this._updateWorldVertices();
+    this.#updateWorldVertices();
 
     this.p5Instance.push();
     this.p5Instance.fill(this.color[0], this.color[1], this.color[2]);
@@ -212,7 +222,7 @@ export default class SimulationObject {
    * @param {number} depth - глубина
    * @param {number} mass - масса
    */
-  _initializeInertiaTensor(width, height, depth, mass) {
+  #initializeInertiaTensor(width, height, depth, mass) {
     const Ixx = (mass / 12.0) * (height ** 2 + depth ** 2);
     const Iyy = (mass / 12.0) * (width ** 2 + depth ** 2);
     const Izz = (mass / 12.0) * (width ** 2 + height ** 2);
@@ -239,7 +249,7 @@ export default class SimulationObject {
    * @param {number} height - высота
    * @param {number} depth - глубина
    */
-  _initializeVertices(width, height, depth) {
+  #initializeVertices(width, height, depth) {
     const a = width / 2.0;
     const b = height / 2.0;
     const c = depth / 2.0;
@@ -291,7 +301,7 @@ export default class SimulationObject {
   /**
    * Обновление мировых координат вершин
    */
-  _updateWorldVertices() {
+  #updateWorldVertices() {
     const modelMatrix = mat4.create();
 
     mat4.fromRotationTranslationScale(

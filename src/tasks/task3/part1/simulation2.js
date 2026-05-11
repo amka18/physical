@@ -1,5 +1,8 @@
 import SimulationObject from "../../../common/simulation_object.js";
-import { IntegrateQuat } from "../../../common/util.js";
+import {
+  IntegrateQuatGlobal,
+  IntegrateQuatLocal,
+} from "../../../common/util.js";
 
 const { mat4, vec3, quat } = glMatrix;
 
