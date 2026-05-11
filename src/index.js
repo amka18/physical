@@ -1,4 +1,4 @@
-import GameEngine from "./game_engine.js";
+import GameEngine from "./simulation.js";
 
 class Timer {
   #timePoint = 0;
@@ -19,7 +19,6 @@ const sketch = (p5) => {
 
   p5.setup = () => {
     p5.createCanvas(700, 700, p5.WEBGL);
-    gameEngine.init();
     timer.reset();
   };
 
