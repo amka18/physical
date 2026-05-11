@@ -3,7 +3,7 @@ import { IntegrateQuat } from "../../../common/util.js";
 
 const { mat4, vec3, quat } = glMatrix;
 
-export default class Simulation {
+export default class Simulation1 {
   object;
 
   p5Instance;
