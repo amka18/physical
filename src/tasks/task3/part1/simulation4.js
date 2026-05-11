@@ -6,7 +6,7 @@ import {
 
 const { mat3, mat4, vec3, quat } = glMatrix;
 
-export default class Simulation1 {
+export default class Simulation4 {
   object;
 
   initialAngularMomentum;
