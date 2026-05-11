@@ -4,10 +4,12 @@ import {
   IntegrateQuatLocal,
 } from "../../../common/util.js";
 
-const { mat4, vec3, quat } = glMatrix;
+const { mat3, mat4, vec3, quat } = glMatrix;
 
 export default class Simulation1 {
   object;
+
+  initialAngularMomentum;
 
   p5Instance;
 
@@ -17,11 +19,7 @@ export default class Simulation1 {
     this.object = new SimulationObject(
       vec3.fromValues(100, 50, 30),
       vec3.fromValues(0.0, 0.0, 0.0),
-      vec3.fromValues(
-        this.p5Instance.random(-90, 90),
-        this.p5Instance.random(-90, 90),
-        this.p5Instance.random(-90, 90),
-      ),
+      vec3.fromValues(0.0, 0.0, 0.0),
       vec3.fromValues(1.0, 1.0, 1.0),
       vec3.fromValues(0.0, 0.0, 0.0),
       vec3.fromValues(
@@ -37,39 +35,21 @@ export default class Simulation1 {
       ),
       p5Instance,
     );
+
+    this.initialAngularMomentum = this.object.angularMomentum;
   }
 
   update(dt) {
-    // // расчет углового ускорения
-    // const a = vec3.create();
-
-    // const g = vec3.create();
-
-    // const inverseT = mat3.create();
-    // mat3.invert(inverseT, this.object.inertialTensor);
-
-    // mat3.multiplyVec3(
-    //   g,
-    //   this.object.inertialTensor,
-    //   this.object.angularVelocity,
-    // );
-
-    // const l = vec3.create();
-    // vec3.cross(l, this.object.angularVelocity, g);
-
-    const dQuat = IntegrateQuat(
-      this.object.rotation,
-      this.object.angularVelocity,
-      dt,
-    );
-    quat.add(this.object.rotation, this.object.rotation, dQuat);
-    quat.normalize(this.object.rotation, this.object.rotation);
-
-    this.object.updateWorldInertialTensor();
+    IntegrateQuatLocal(this.object.rotation, this.object.angularVelocity, dt);
   }
 
   draw() {
     this.p5Instance.camera(0, 0, 600, 0, 0, 0, 0, 1, 0);
+
+    this.p5Instance.fill(255, 0, 0);
+
+    this.p5Instance.text(this.initialAngularMomentum, -120, -120, 50);
+    this.p5Instance.text(this.object.angularMomentum, -120, -100, 50);
 
     this.object.draw();
   }

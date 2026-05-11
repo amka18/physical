@@ -152,6 +152,8 @@ export default class SimulationObject {
    * @returns {vec3} Мировой угловой момент
    */
   getWorldAngularMomentum() {
+    this.updateAngularMomentum();
+
     const rotationMatrix = mat3.create();
 
     mat3.fromQuat(rotationMatrix, this.rotation);
