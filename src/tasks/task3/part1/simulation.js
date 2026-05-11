@@ -1,6 +1,6 @@
-import GameObject from "./simulation_object.js";
-import Plane from "./plane.js";
-import { GroundConstraint } from "./collision.js";
+import GameObject from "../../../common/simulation_object.js";
+import Plane from "../../../common/plane.js";
+import { GroundConstraint } from "../../../common/collision.js";
 
 const { mat4, vec3, quat } = glMatrix;
 
@@ -45,31 +45,6 @@ export default class GameEngine {
       p5Instance,
     );
     this.objects.push(object1);
-
-    const object2 = new GameObject(
-      vec3.fromValues(
-        this.p5Instance.random(50, 95),
-        this.p5Instance.random(50, 95),
-        this.p5Instance.random(50, 95),
-      ),
-      vec3.fromValues(0.0, -250, 0.0),
-      vec3.fromValues(
-        this.p5Instance.random(180),
-        this.p5Instance.random(180),
-        this.p5Instance.random(180),
-      ),
-      vec3.fromValues(1.0, 1.0, 1.0),
-      vec3.fromValues(0.0, -this.p5Instance.random(0.1), 0.0),
-      vec3.fromValues(0.0, 0.0, 0.0),
-      this.p5Instance.random(10, 100),
-      vec3.fromValues(
-        Math.floor(this.p5Instance.random(255)),
-        Math.floor(this.p5Instance.random(255)),
-        Math.floor(this.p5Instance.random(255)),
-      ),
-      p5Instance,
-    );
-    this.objects.push(object2);
   }
 
   update(dt) {

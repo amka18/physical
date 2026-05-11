@@ -1,4 +1,4 @@
-const { mat4, vec3, vec4, quat } = glMatrix;
+const { mat3, mat4, vec3, vec4, quat } = glMatrix;
 
 export default class GameObject {
   position;
@@ -11,7 +11,6 @@ export default class GameObject {
   angularVelocity;
 
   mass;
-  inverseMatrix;
   inertialTensor;
   inertialWorldTensor;
 
@@ -50,12 +49,28 @@ export default class GameObject {
       ? vec3.clone(angularVelocity)
       : vec3.create();
 
-    this.mass = mass;
-
     this.prevPosition = vec3.clone(this.position);
     this.prevRotation = quat.clone(this.rotation);
 
-    this.inverseMatrix = this.mass > 0 ? 1.0 / this.mass : 0;
+    this.mass = mass; // проверить что масса не нулевая
+
+    const Ixx = (mass / 12.0) * (dimensions[1] ** 2 + dimensions[2] ** 2);
+    const Iyy = (mass / 12.0) * (dimensions[0] ** 2 + dimensions[2] ** 2);
+    const Izz = (mass / 12.0) * (dimensions[0] ** 2 + dimensions[1] ** 2);
+    this.inertialTensor = mat3.fromValues(
+      Ixx,
+      0.0,
+      0.0,
+      0.0,
+      Iyy,
+      0.0,
+      0.0,
+      0.0,
+      Izz,
+    );
+
+    this.inertialWorldTensor = mat3.create();
+    this.updateWorldInertialTensor();
 
     const a = dimensions[0] / 2.0;
     const b = dimensions[1] / 2.0;
@@ -115,6 +130,7 @@ export default class GameObject {
 
   draw() {
     this.updateWorldVertices();
+    this.updateWorldInertialTensor();
 
     this.p5Instance.push();
     this.p5Instance.fill(this.color[0], this.color[1], this.color[2]);
@@ -174,5 +190,17 @@ export default class GameObject {
         worldVert[2],
       );
     }
+  }
+
+  updateWorldInertialTensor() {
+    const rotationMatrix = mat3.create();
+    mat3.fromQuat(rotationMatrix, this.rotation);
+
+    const transposeRotationMatrix = mat3.create();
+    mat3.transpose(transposeRotationMatrix, rotationMatrix);
+
+    const tempMatrix = mat3.create();
+    mat3.multiply(tempMatrix, this.inertialTensor, transposeRotationMatrix);
+    mat3.multiply(this.inertialWorldTensor, rotationMatrix, tempMatrix);
   }
 }
