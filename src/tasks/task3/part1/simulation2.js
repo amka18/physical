@@ -9,6 +9,8 @@ const { mat3, mat4, vec3, quat } = glMatrix;
 export default class Simulation1 {
   object;
 
+  initialAngularMomentum;
+
   p5Instance;
 
   constructor(p5Instance) {
@@ -33,16 +35,20 @@ export default class Simulation1 {
       ),
       p5Instance,
     );
+
+    this.initialAngularMomentum = this.object.angularMomentum;
   }
 
   update(dt) {
     vec3.transformMat3(
-      this.object.angularMomentum,
       this.object.angularVelocity,
+      this.initialAngularMomentum,
       this.object.invertInertialTensor,
     );
 
     IntegrateQuatLocal(this.object.rotation, this.object.angularVelocity, dt);
+
+    this.object.updateAngularMomentum();
   }
 
   draw() {
