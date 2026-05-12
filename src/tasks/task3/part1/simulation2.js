@@ -2,7 +2,13 @@ import SimulationObject from "../../../common/simulation_object.js";
 import {
   IntegrateQuatGlobal,
   IntegrateQuatLocal,
-} from "../../../common/util.js";
+} from "../../../common/integrators.js";
+import {
+  OutputVector,
+  OutputValue,
+  DrawLine,
+  DrawAxes,
+} from "../../../common/draw_utils.js";
 
 const { mat3, mat4, vec3, quat } = glMatrix;
 
@@ -23,11 +29,11 @@ export default class Simulation2 {
       vec3.fromValues(1.0, 1.0, 1.0),
       vec3.fromValues(0.0, 0.0, 0.0),
       vec3.fromValues(
-        this.p5Instance.random(-0.001, 0.001),
-        this.p5Instance.random(-0.001, 0.001),
-        this.p5Instance.random(-0.001, 0.001),
+        this.p5Instance.random(0.002, 0.003),
+        this.p5Instance.random(0.002, 0.003),
+        this.p5Instance.random(0.002, 0.003),
       ),
-      this.p5Instance.random(10, 100),
+      80,
       vec3.fromValues(
         Math.floor(this.p5Instance.random(255)),
         Math.floor(this.p5Instance.random(255)),
@@ -36,7 +42,7 @@ export default class Simulation2 {
       p5Instance,
     );
 
-    this.initialAngularMomentum = this.object.angularMomentum;
+    this.initialAngularMomentum = vec3.clone(this.object.angularMomentum);
   }
 
   update(dt) {
@@ -47,17 +53,47 @@ export default class Simulation2 {
     );
 
     IntegrateQuatLocal(this.object.rotation, this.object.angularVelocity, dt);
-
-    this.object.updateAngularMomentum();
   }
 
   draw() {
     this.p5Instance.camera(0, 0, 600, 0, 0, 0, 0, 1, 0);
 
-    this.p5Instance.fill(255, 0, 0);
+    OutputVector(
+      "init",
+      this.initialAngularMomentum,
+      3,
+      vec3.fromValues(-120, -120, 50),
+      vec3.fromValues(10, 20, 10),
+      this.p5Instance,
+    );
 
-    this.p5Instance.text(this.initialAngularMomentum, -120, -120, 50);
-    this.p5Instance.text(this.object.angularMomentum, -120, -100, 50);
+    OutputVector(
+      "current",
+      this.object.angularMomentum,
+      5,
+      vec3.fromValues(-70, -120, 50),
+      vec3.fromValues(10, 10, 10),
+      this.p5Instance,
+    );
+
+    OutputValue(
+      "energy",
+      this.object.getRotationKineticEnergy(),
+      3,
+      vec3.fromValues(0, -120, 50),
+      vec3.fromValues(10, 10, 10),
+      this.p5Instance,
+    );
+
+    DrawLine(
+      this.initialAngularMomentum,
+      vec3.fromValues(0.0, 0.0, 0.0),
+      200,
+      vec3.fromValues(180, 50, 50),
+      this.p5Instance,
+    );
+
+    DrawAxes(this.object.position, this.object.rotation, 100, this.p5Instance);
 
     this.object.draw();
   }

@@ -2,7 +2,7 @@ import SimulationObject from "../../../common/simulation_object.js";
 import {
   IntegrateQuatGlobal,
   IntegrateQuatLocal,
-} from "../../../common/util.js";
+} from "../../../common/intergrators.js";
 
 const { mat3, mat4, vec3, quat } = glMatrix;
 

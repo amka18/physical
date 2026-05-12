@@ -146,6 +146,13 @@ export default class SimulationObject {
     return worldInertialTensor;
   }
 
+  getGyro() {
+    const gyro = vec3.create();
+    vec3.cross(gyro, this.angularVelocity, this.angularMomentum);
+
+    return gyro;
+  }
+
   /**
    * Получение мирового углового момента
    * L_world = R * L_local
