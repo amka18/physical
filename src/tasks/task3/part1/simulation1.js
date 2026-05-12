@@ -14,6 +14,7 @@ const { mat3, mat4, vec3, quat } = glMatrix;
 
 export default class Simulation1 {
   object;
+  camera;
 
   worldInitialAngularMomentum;
   worldCurrentAngularMomentum;
@@ -57,11 +58,17 @@ export default class Simulation1 {
     this.worldCurrentAngularMomentum = vec3.create();
   }
 
-  update(dt) {
-    const worldInertialTensor = this.object.getWorldInertialTensor();
+  setCamera() {
+    this.camera = this.p5Instance.createCamera();
+    this.p5Instance.camera(0, 0, 600, 0, 0, 0, 0, 1, 0);
+  }
 
-    const invertWorldInertialTensor = mat3.create();
-    mat3.invert(invertWorldInertialTensor, worldInertialTensor);
+  update(dt) {
+    const obj = this.object;
+
+    const worldInertialTensor = obj.getWorldInertialTensor();
+
+    const invertWorldInertialTensor = obj.getWorldInvertInertialTensor();
 
     const newWorldAngularVelocity = vec3.create();
     vec3.transformMat3(
@@ -70,7 +77,7 @@ export default class Simulation1 {
       invertWorldInertialTensor,
     );
 
-    IntegrateQuatGlobal(this.object.nextRotation, newWorldAngularVelocity, dt);
+    IntegrateQuatGlobal(obj.nextRotation, newWorldAngularVelocity, dt);
 
     vec3.transformMat3(
       this.worldCurrentAngularMomentum,
@@ -80,25 +87,9 @@ export default class Simulation1 {
   }
 
   draw() {
-    this.p5Instance.camera(0, 0, 600, 0, 0, 0, 0, 1, 0);
+    this.p5Instance.orbitControl();
 
-    OutputVector(
-      "init",
-      this.worldInitialAngularMomentum,
-      3,
-      vec3.fromValues(-120, -120, 50),
-      vec3.fromValues(10, 20, 10),
-      this.p5Instance,
-    );
-
-    OutputVector(
-      "current",
-      this.worldCurrentAngularMomentum,
-      5,
-      vec3.fromValues(-70, -120, 50),
-      vec3.fromValues(10, 10, 10),
-      this.p5Instance,
-    );
+    this.object.draw();
 
     DrawLine(
       this.worldInitialAngularMomentum,
@@ -108,8 +99,64 @@ export default class Simulation1 {
       this.p5Instance,
     );
 
-    DrawAxes(this.object.nextPosition, this.object.nextRotation, 100, this.p5Instance);
+    DrawAxes(
+      this.object.position,
+      this.object.nextRotation,
+      100,
+      this.p5Instance,
+    );
 
-    this.object.draw();
+    const cameraParams = [
+      this.camera.eyeX,
+      this.camera.eyeY,
+      this.camera.eyeZ,
+      this.camera.centerX,
+      this.camera.centerY,
+      this.camera.centerZ,
+      0,
+      -1,
+      0,
+    ];
+
+    this.p5Instance.drawingContext.disable(
+      this.p5Instance.drawingContext.DEPTH_TEST,
+    );
+
+    this.p5Instance.camera();
+
+    this.p5Instance.push();
+
+    this.p5Instance.translate(
+      -this.p5Instance.width / 2,
+      -this.p5Instance.height / 2,
+    );
+
+    OutputVector(
+      "init",
+      this.worldInitialAngularMomentum,
+      4,
+      16,
+      [10, 20],
+      [10, 10, 10],
+      this.p5Instance,
+    );
+
+    OutputVector(
+      "current",
+      this.worldCurrentAngularMomentum,
+      4,
+      16,
+      [10, 40],
+      [10, 10, 10],
+      this.p5Instance,
+    );
+
+    this.p5Instance.pop();
+
+    this.p5Instance.drawingContext.enable(
+      this.p5Instance.drawingContext.DEPTH_TEST,
+    );
+
+    this.p5Instance.camera(...cameraParams);
   }
 }

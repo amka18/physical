@@ -36,6 +36,8 @@ const sketch1 = (p5) => {
     p5.createCanvas(400, 400, p5.WEBGL);
     p5.textFont(font);
 
+    simulation.setCamera();
+
     timer.reset();
   };
 
@@ -66,6 +68,8 @@ const sketch2 = (p5) => {
   p5.setup = () => {
     p5.createCanvas(400, 400, p5.WEBGL);
     p5.textFont(font);
+
+    simulation.setCamera();
 
     timer.reset();
   };
@@ -98,6 +102,8 @@ const sketch3 = (p5) => {
     p5.createCanvas(400, 400, p5.WEBGL);
     p5.textFont(font);
 
+    simulation.setCamera();
+
     timer.reset();
   };
 
@@ -128,6 +134,8 @@ const sketch4 = (p5) => {
   p5.setup = () => {
     p5.createCanvas(400, 400, p5.WEBGL);
     p5.textFont(font);
+
+    simulation.setCamera();
 
     timer.reset();
   };

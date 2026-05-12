@@ -13,17 +13,14 @@ export default class SimulationObject {
   nextVelocity;
   velocity;
 
-  // local
   nextAngularVelocity;
   angularVelocity;
 
-  // constants
   inertialTensor;
   invertInertialTensor;
 
   mass;
 
-  // пркрпеленные штуки
   localAnchor;
 
   addAttachmentPoint(localAnchor) {
@@ -56,10 +53,8 @@ export default class SimulationObject {
     );
   }
 
-  // вершины
   worldVertices;
 
-  // потом перепмсать // дошел до сюда /////////////
   angularMomentum;
 
   force;
@@ -119,7 +114,6 @@ export default class SimulationObject {
       : vec3.fromValues(0.0, 0.0, 0.0);
     this.nextAngularVelocity = vec3.clone(this.angularVelocity);
 
-    // до сюда проверил все
     this.#initializeInertiaTensor(
       dimensions[0],
       dimensions[1],
