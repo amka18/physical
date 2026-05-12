@@ -41,8 +41,8 @@
 //       this.objects.push(
 //         new SimulationObject(
 //           vec3.fromValues(width, height, depth), // dimensions
-//           vec3.fromValues(x, y, z), // position
-//           vec3.fromValues(0, 0, 0), // rotation (начальный поворот)
+//           vec3.fromValues(x, y, z), // nextPosition
+//           vec3.fromValues(0, 0, 0), // nextRotation (начальный поворот)
 //           vec3.fromValues(1, 1, 1), // scale (оставляем 1)
 //           vec3.fromValues(0, 0, 0), // linear velocity
 //           vec3.fromValues(0, 0, 0), // angular velocity
@@ -59,9 +59,9 @@
     
 //     // Сохраняем предыдущие позиции
 //     for (let object of this.objects) {
-//       vec3.copy(object.prevPosition, object.position);
-//       quat.copy(object.prevRotation, object.rotation);
-//       vec3.copy(object.prevLinearVelocity, object.linearVelocity);
+//       vec3.copy(object.position, object.nextPosition);
+//       quat.copy(object.rotation, object.nextRotation);
+//       vec3.copy(object.prevLinearVelocity, object.nextVelocity);
 //     }
     
 //     // XPBD итерации
@@ -70,21 +70,21 @@
 //       if (iter === 0) {
 //         for (let object of this.objects) {
 //           // Применяем гравитацию и обновляем позицию
-//           vec3.scaleAndAdd(object.position, object.position, object.linearVelocity, dt);
-//           vec3.scaleAndAdd(object.position, object.position, this.gravity, dt * dt);
+//           vec3.scaleAndAdd(object.nextPosition, object.nextPosition, object.nextVelocity, dt);
+//           vec3.scaleAndAdd(object.nextPosition, object.nextPosition, this.gravity, dt * dt);
           
 //           // Обновляем вращение, если есть угловая скорость
-//           if (vec3.length(object.angularVelocity) > 0.001) {
+//           if (vec3.length(object.nextAngularVelocity) > 0.001) {
 //             let wquat = quat.fromValues(
-//               object.angularVelocity[0],
-//               object.angularVelocity[1],
-//               object.angularVelocity[2],
+//               object.nextAngularVelocity[0],
+//               object.nextAngularVelocity[1],
+//               object.nextAngularVelocity[2],
 //               0.0
 //             );
-//             quat.multiply(wquat, wquat, object.rotation);
+//             quat.multiply(wquat, wquat, object.nextRotation);
 //             quat.scale(wquat, wquat, dt * 0.5);
-//             quat.add(object.rotation, object.rotation, wquat);
-//             quat.normalize(object.rotation, object.rotation);
+//             quat.add(object.nextRotation, object.nextRotation, wquat);
+//             quat.normalize(object.nextRotation, object.nextRotation);
 //           }
 //         }
 //       }
@@ -105,23 +105,23 @@
 //     // Обновляем скорости после всех итераций
 //     for (let object of this.objects) {
 //       // Линейная скорость
-//       vec3.sub(object.linearVelocity, object.position, object.prevPosition);
-//       vec3.scale(object.linearVelocity, object.linearVelocity, 1.0 / dt);
+//       vec3.sub(object.nextVelocity, object.nextPosition, object.position);
+//       vec3.scale(object.nextVelocity, object.nextVelocity, 1.0 / dt);
       
 //       // Угловая скорость (если было вращение)
 //       let deltaQuat = quat.create();
-//       let prevConj = quat.clone(object.prevRotation);
+//       let prevConj = quat.clone(object.rotation);
 //       quat.conjugate(prevConj, prevConj);
-//       quat.multiply(deltaQuat, object.rotation, prevConj);
+//       quat.multiply(deltaQuat, object.nextRotation, prevConj);
       
 //       let angle = 2 * Math.acos(Math.min(0.9999, Math.abs(deltaQuat[3])));
 //       let axis = vec3.fromValues(deltaQuat[0], deltaQuat[1], deltaQuat[2]);
 //       let len = vec3.length(axis);
 //       if (len > 0.0001 && angle > 0.0001) {
 //         vec3.scale(axis, axis, 1.0 / len);
-//         vec3.scale(object.angularVelocity, axis, angle / dt);
+//         vec3.scale(object.nextAngularVelocity, axis, angle / dt);
 //       } else {
-//         vec3.set(object.angularVelocity, 0, 0, 0);
+//         vec3.set(object.nextAngularVelocity, 0, 0, 0);
 //       }
 //     }
 //   }
@@ -142,14 +142,14 @@
 //     if (minY < groundY) {
 //       const penetration = groundY - minY;
 //       // Корректируем позицию
-//       object.position[1] += penetration;
+//       object.nextPosition[1] += penetration;
       
 //       // Обновляем мировые вершины после коррекции
 //       object.draw(); // Это обновит worldVertices
       
 //       // Отскок
-//       if (object.linearVelocity[1] < 0) {
-//         object.linearVelocity[1] *= -0.3;
+//       if (object.nextVelocity[1] < 0) {
+//         object.nextVelocity[1] *= -0.3;
 //       }
 //     }
 //   }
@@ -185,8 +185,8 @@
 //     }
     
 //     // Определяем направление нормали
-//     const centerA = objA.position;
-//     const centerB = objB.position;
+//     const centerA = objA.nextPosition;
+//     const centerB = objB.nextPosition;
 //     const dir = vec3.subtract(vec3.create(), centerB, centerA);
     
 //     if (vec3.dot(dir, normal) < 0) {
@@ -202,11 +202,11 @@
 //       const correction = penetration / (totalInvMass + this.compliance / (this.iterations * this.iterations));
 //       const correctionVec = vec3.scale(vec3.create(), normal, correction);
       
-//       vec3.scaleAndAdd(objA.position, objA.position, correctionVec, -invMassA);
-//       vec3.scaleAndAdd(objB.position, objB.position, correctionVec, invMassB);
+//       vec3.scaleAndAdd(objA.nextPosition, objA.nextPosition, correctionVec, -invMassA);
+//       vec3.scaleAndAdd(objB.nextPosition, objB.nextPosition, correctionVec, invMassB);
       
 //       // Коррекция скоростей
-//       const relVelocity = vec3.subtract(vec3.create(), objB.linearVelocity, objA.linearVelocity);
+//       const relVelocity = vec3.subtract(vec3.create(), objB.nextVelocity, objA.nextVelocity);
 //       const velAlong = vec3.dot(relVelocity, normal);
       
 //       if (velAlong < 0) {
@@ -214,8 +214,8 @@
 //         const impulseMag = -(1 + restitution) * velAlong / totalInvMass;
 //         const impulse = vec3.scale(vec3.create(), normal, impulseMag);
         
-//         vec3.scaleAndAdd(objA.linearVelocity, objA.linearVelocity, impulse, -invMassA);
-//         vec3.scaleAndAdd(objB.linearVelocity, objB.linearVelocity, impulse, invMassB);
+//         vec3.scaleAndAdd(objA.nextVelocity, objA.nextVelocity, impulse, -invMassA);
+//         vec3.scaleAndAdd(objB.nextVelocity, objB.nextVelocity, impulse, invMassB);
 //       }
 //     }
 //   }

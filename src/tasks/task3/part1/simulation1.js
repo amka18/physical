@@ -70,7 +70,7 @@ export default class Simulation1 {
       invertWorldInertialTensor,
     );
 
-    IntegrateQuatGlobal(this.object.rotation, newWorldAngularVelocity, dt);
+    IntegrateQuatGlobal(this.object.nextRotation, newWorldAngularVelocity, dt);
 
     vec3.transformMat3(
       this.worldCurrentAngularMomentum,
@@ -108,7 +108,7 @@ export default class Simulation1 {
       this.p5Instance,
     );
 
-    DrawAxes(this.object.position, this.object.rotation, 100, this.p5Instance);
+    DrawAxes(this.object.nextPosition, this.object.nextRotation, 100, this.p5Instance);
 
     this.object.draw();
   }

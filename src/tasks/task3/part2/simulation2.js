@@ -70,7 +70,7 @@ export default class Simulation2 {
 
     // ============ ВЫЧИСЛЕНИЕ СИЛЫ ПРУЖИНЫ ============
     const rotMatrix = mat3.create();
-    mat3.fromQuat(rotMatrix, this.object.rotation);
+    mat3.fromQuat(rotMatrix, this.object.nextRotation);
 
     // Вектор от центра масс до точки крепления в мировых координатах
     const r_world = vec3.create();
@@ -78,7 +78,7 @@ export default class Simulation2 {
 
     // Мировая позиция точки крепления
     const worldAttachmentPoint = vec3.create();
-    vec3.add(worldAttachmentPoint, this.object.position, r_world);
+    vec3.add(worldAttachmentPoint, this.object.nextPosition, r_world);
 
     // Вектор от точки крепления до анкера
     const delta = vec3.create();
@@ -98,7 +98,7 @@ export default class Simulation2 {
       const worldAngularVelocity = this.object.getWorldAngularVelocity();
       const pointVelocity = vec3.create();
       vec3.cross(pointVelocity, worldAngularVelocity, r_world);
-      vec3.add(pointVelocity, pointVelocity, this.object.linearVelocity);
+      vec3.add(pointVelocity, pointVelocity, this.object.nextVelocity);
 
       // Скорость растяжения вдоль пружины
       const stretchVelocity = vec3.dot(pointVelocity, direction);
@@ -135,7 +135,7 @@ export default class Simulation2 {
 
     // Момент силы в локальные координаты
     const rotMatrix2 = mat3.create();
-    mat3.fromQuat(rotMatrix2, this.object.rotation);
+    mat3.fromQuat(rotMatrix2, this.object.nextRotation);
     const rotMatrixTranspose = mat3.create();
     mat3.transpose(rotMatrixTranspose, rotMatrix2);
 
@@ -153,41 +153,41 @@ export default class Simulation2 {
     // ============ SIMPLECTIC EULER ============
     // Обновляем скорости
     vec3.scaleAndAdd(
-      this.object.linearVelocity,
-      this.object.linearVelocity,
+      this.object.nextVelocity,
+      this.object.nextVelocity,
       linearAcc,
       dt,
     );
     vec3.scaleAndAdd(
-      this.object.angularVelocity,
-      this.object.angularVelocity,
+      this.object.nextAngularVelocity,
+      this.object.nextAngularVelocity,
       angularAcc,
       dt,
     );
 
     // Демпфирование для стабильности
-    vec3.scale(this.object.linearVelocity, this.object.linearVelocity, 0.999);
-    vec3.scale(this.object.angularVelocity, this.object.angularVelocity, 0.998);
+    vec3.scale(this.object.nextVelocity, this.object.nextVelocity, 0.999);
+    vec3.scale(this.object.nextAngularVelocity, this.object.nextAngularVelocity, 0.998);
 
     // Обновляем позицию
     vec3.scaleAndAdd(
-      this.object.position,
-      this.object.position,
-      this.object.linearVelocity,
+      this.object.nextPosition,
+      this.object.nextPosition,
+      this.object.nextVelocity,
       dt,
     );
 
     // Обновляем поворот
     const newWorldAngularVelocity = this.object.getWorldAngularVelocity();
-    IntegrateQuatGlobal(this.object.rotation, newWorldAngularVelocity, dt);
-    quat.normalize(this.object.rotation, this.object.rotation);
+    IntegrateQuatGlobal(this.object.nextRotation, newWorldAngularVelocity, dt);
+    quat.normalize(this.object.nextRotation, this.object.nextRotation);
 
     // Обновляем угловой момент
     this.object.updateAngularMomentum();
 
     // ============ ВИЗУАЛИЗАЦИЯ ============
     const updatedRotMatrix = mat3.create();
-    mat3.fromQuat(updatedRotMatrix, this.object.rotation);
+    mat3.fromQuat(updatedRotMatrix, this.object.nextRotation);
     const updatedR_World = vec3.create();
     vec3.transformMat3(
       updatedR_World,
@@ -195,7 +195,7 @@ export default class Simulation2 {
       updatedRotMatrix,
     );
     const updatedWorldPoint = vec3.create();
-    vec3.add(updatedWorldPoint, this.object.position, updatedR_World);
+    vec3.add(updatedWorldPoint, this.object.nextPosition, updatedR_World);
     this.springPoints = [
       vec3.clone(this.springAnchor),
       vec3.clone(updatedWorldPoint),
@@ -205,7 +205,7 @@ export default class Simulation2 {
 //     const currentLength = vec3.distance(this.springAnchor, updatedWorldPoint);
 //     const displacement = currentLength - this.springRestLength;
 //     const forceMag = Math.abs(this.springStiffness * displacement);
-//     const angularVelMag = vec3.length(this.object.angularVelocity);
+//     const angularVelMag = vec3.length(this.object.nextAngularVelocity);
 
 //     this.debugText = `SPRING ON RIGID BODY
 // Length: ${currentLength.toFixed(1)} / ${this.springRestLength}
@@ -213,18 +213,18 @@ export default class Simulation2 {
 // Spring Force: ${forceMag.toFixed(1)}
 // Stiffness: ${this.springStiffness} | Damping: ${this.springDamping}
 // Angular Velocity: ${angularVelMag.toFixed(2)} rad/s
-// Pos Y: ${this.object.position[1].toFixed(1)}
-// Vel Y: ${this.object.linearVelocity[1].toFixed(1)}`;
+// Pos Y: ${this.object.nextPosition[1].toFixed(1)}
+// Vel Y: ${this.object.nextVelocity[1].toFixed(1)}`;
 
     // Защита от вылета
     if (
-      Math.abs(this.object.position[1]) > 400 ||
-      Math.abs(this.object.position[0]) > 400
+      Math.abs(this.object.nextPosition[1]) > 400 ||
+      Math.abs(this.object.nextPosition[0]) > 400
     ) {
-      this.object.position = vec3.fromValues(0, 150, 0);
-      this.object.linearVelocity = vec3.fromValues(0, 0, 0);
-      this.object.angularVelocity = vec3.fromValues(0, 0, 0);
-      this.object.rotation = quat.create();
+      this.object.nextPosition = vec3.fromValues(0, 150, 0);
+      this.object.nextVelocity = vec3.fromValues(0, 0, 0);
+      this.object.nextAngularVelocity = vec3.fromValues(0, 0, 0);
+      this.object.nextRotation = quat.create();
       console.log("Object reset - flew too far");
     }
   }
@@ -276,9 +276,9 @@ export default class Simulation2 {
       this.p5Instance.stroke(255, 100, 100);
       this.p5Instance.strokeWeight(1);
       this.p5Instance.line(
-        this.object.position[0],
-        this.object.position[1],
-        this.object.position[2],
+        this.object.nextPosition[0],
+        this.object.nextPosition[1],
+        this.object.nextPosition[2],
         this.springPoints[1][0],
         this.springPoints[1][1],
         this.springPoints[1][2],
@@ -290,9 +290,9 @@ export default class Simulation2 {
     // Центр масс
     this.p5Instance.push();
     this.p5Instance.translate(
-      this.object.position[0],
-      this.object.position[1],
-      this.object.position[2],
+      this.object.nextPosition[0],
+      this.object.nextPosition[1],
+      this.object.nextPosition[2],
     );
     this.p5Instance.fill(255, 0, 0);
     this.p5Instance.noStroke();

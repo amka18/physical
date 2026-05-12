@@ -22,12 +22,16 @@ export default class Simulation1 {
   camera;
 
   springAnchorPoint;
+  worldAttachmentPoint;
+
   springCurrentLength;
   springRestLength;
+
   springStiffness;
-  springApplicationPoint;
-  springForceValue;
   springDamping;
+
+  springForce1;
+  springForce2;
 
   constructor(p5Instance) {
     this.p5Instance = p5Instance;
@@ -50,21 +54,15 @@ export default class Simulation1 {
       p5Instance,
     );
 
-    this.object.addForce(
-      vec3.fromValues(0.0, 0.0, 0.0),
-      vec3.fromValues(0.0, 0.0, 0.0),
-    );
-
-    // Инициализация пружинки
-    this.springAnchorPoint = vec3.fromValues(0, 40, 250);
+    this.springAnchorPoint = vec3.fromValues(-50, 40, 250);
+    this.object.addAttachmentPoint(vec3.fromValues(20.0, 0.0, 40.0));
+    this.worldAttachmentPoint = vec3.fromValues(0.0, 0.0, 0.0);
     this.springCurrentLength = 0.0;
-    this.springRestLength = 15.0;
-    this.springStiffness = 0.1;
-    this.springDamping = 0.1;
-    this.springApplicationPoint = vec3.clone(
-      this.object.getWorldApplicationPoint,
-    );
-    this.springForceValue = 0.0;
+    this.springRestLength = 200.0;
+    this.springStiffness = 0.00001;
+    this.springDamping = 0.001;
+    this.springForce1 = 0.0;
+    this.springForce2 = 0.0;
   }
 
   setCamera() {
@@ -72,80 +70,109 @@ export default class Simulation1 {
   }
 
   update(dt) {
-    this.springApplicationPoint = vec3.clone(
-      this.object.getWorldApplicationPoint(),
-    );
+    // ОБНОВЛЯЕМ
+    const obj = this.object;
 
-    // присваеваем копираем в текущие
+    vec3.copy(obj.position, obj.nextPosition);
+    quat.copy(obj.rotation, obj.nextRotation);
+    vec3.copy(obj.velocity, obj.nextVelocity);
+    vec3.copy(obj.angularVelocity, obj.nextAngularVelocity);
 
-    const springDirection = vec3.create();
+    // НАХОДИМ СИЛЫ
+    // обновляем мировую координату точки соприкосеовения
+    this.worldAttachmentPoint = obj.getWorldPositionAttachmentPoint();
+
+    // расчитываем закон гука
+    const springToObjectDir = vec3.create();
     vec3.sub(
-      springDirection,
-      this.springApplicationPoint,
+      springToObjectDir,
+      this.worldAttachmentPoint,
       this.springAnchorPoint,
     );
-    this.springCurrentLength_ = vec3.length(springDirection);
+    this.springCurrentLength = vec3.length(springToObjectDir);
+    this.springForce1 =
+      (this.springRestLength - this.springCurrentLength) * this.springStiffness;
+    const force1 = vec3.create();
+    vec3.normalize(force1, springToObjectDir);
+    vec3.scale(force1, force1, this.springForce1);
 
-    const forceDirection = vec3.create();
-    vec3.normalize(forceDirection, springDirection);
+    // демпфирование
+    const attachmentPointVelocity = vec3.clone(obj.velocity);
+    const rotateVelocity = vec3.create();
+    vec3.cross(rotateVelocity, obj.angularVelocity, obj.localAnchor);
+    vec3.add(attachmentPointVelocity, attachmentPointVelocity, rotateVelocity);
 
-    const dL = this.springCurrentLength - this.springRestLength;
+    const force2 = vec3.create();
+    vec3.scale(force2, attachmentPointVelocity, this.springDamping);
 
-    const worldApplicationPointVelocity =
-      this.object.getWorldApplicationPointVelocity();
+    const force = vec3.create();
+    vec3.add(force, force, force1);
+    vec3.sub(force, force, force2);
 
-    const velocityAlongSpring = vec3.dot(
-      worldApplicationPointVelocity,
-      springDirection,
+    // переводм силу в локальные координаты
+    const rotationMatrix = mat3.create();
+    mat3.fromQuat(rotationMatrix, obj.rotation);
+    const invertRotationMatrix = mat3.create();
+    mat3.invert(invertRotationMatrix, rotationMatrix);
+    const localForce = vec3.create();
+    vec3.transformMat3(localForce, force, invertRotationMatrix);
+
+    // расчитываем локальный момент
+    const localTorque = vec3.create();
+    vec3.cross(localTorque, obj.localAnchor, force);
+
+    // РАСЧЕТ ЭФФЕКТИВНОЙ МАССЫ
+    const arm = vec3.create();
+    vec3.sub(arm, this.worldAttachmentPoint, obj.position);
+    const tempN = vec3.create(); //
+    vec3.scale(tempN, springToObjectDir, -1);
+    const tempCross1 = vec3.create();
+    vec3.cross(arm, arm, tempN);
+    const invertWorldInertialTensor = obj.getWorldInvertInertialTensor();
+    const temp2 = vec3.create();
+    vec3.transformMat3(temp2, tempCross1, invertWorldInertialTensor);
+    const rotationalTemp = vec3.dot(tempCross1, temp2);
+    const invEffMass = 1 / obj.mass + rotationalTemp;
+
+    // update velocity (обновляем скорости)
+    const acceleration = vec3.create();
+    vec3.scale(acceleration, force, invEffMass);
+    vec3.scaleAndAdd(obj.nextVelocity, obj.velocity, acceleration, dt);
+
+    const angularAcceleration = vec3.create();
+    vec3.transformMat3(
+      angularAcceleration,
+      localTorque,
+      obj.invertInertialTensor,
+    );
+    vec3.scaleAndAdd(
+      obj.nextAngularVelocity,
+      obj.angularVelocity,
+      angularAcceleration,
+      dt,
     );
 
-    const dampingForceMag = this.springDamping * velocityAlongSpring;
-
-    const springForceMag = vec3.create();
-    vec3.scale(springForceMag, forceDirection, dL * this.springStiffness);
-
-    // сила в мировых
-    const totalForceMag = springForceMag + dampingForceMag;
-
-    // переведем силу в локальные // сделаем это в функции
-    const localForce = vec3.create();
-
-    const rotMatrix2 = mat3.create();
-    mat3.fromQuat(rotMatrix2, this.object.rotation);
-    const invertRotation = mat3.create();
-    mat3.invert(invertRotation, rotMatrix2);
-
-    vec3.transformMat3(localForce, totalForceMag, invertRotation);
-
-    this.object.updateTorque(localForce);
+    // // передвигаем позиции
+    vec3.scaleAndAdd(obj.nextPosition, obj.position, obj.nextVelocity, dt);
+    IntegrateQuatLocal(obj.nextRotation, obj.nextAngularVelocity, dt);
   }
 
   draw() {
-    // Настраиваем камеру
     this.p5Instance.orbitControl();
 
     this.plane.draw();
-
-    const springDirection = vec3.create();
-    vec3.sub(
-      springDirection,
-      this.springApplicationPoint,
-      this.springAnchorPoint,
-    );
-    DrawLine(
-      springDirection,
-      this.springAnchorPoint,
-      this.springCurrentLength,
-      [100, 0, 0],
-      this.p5Instance,
-    );
-
-    // Рисуем объект
     this.object.draw();
 
-    // 2d
+    this.p5Instance.line(
+      this.springAnchorPoint[0],
+      this.springAnchorPoint[1],
+      this.springAnchorPoint[2],
+      this.worldAttachmentPoint[0],
+      this.worldAttachmentPoint[1],
+      this.worldAttachmentPoint[2],
+    );
 
-    const camParams = [
+    const cameraParams = [
       this.camera.eyeX,
       this.camera.eyeY,
       this.camera.eyeZ,
@@ -160,6 +187,7 @@ export default class Simulation1 {
     this.p5Instance.drawingContext.disable(
       this.p5Instance.drawingContext.DEPTH_TEST,
     );
+
     this.p5Instance.camera();
 
     this.p5Instance.push();
@@ -170,17 +198,17 @@ export default class Simulation1 {
     );
 
     OutputValue(
-      "rest l",
+      "l0 = ",
       this.springRestLength,
       3,
       20,
-      [10, 10],
+      [10, 20],
       [100, 30, 0],
       this.p5Instance,
     );
 
     OutputValue(
-      "cur l",
+      "dl = ",
       this.springCurrentLength,
       3,
       20,
@@ -189,17 +217,12 @@ export default class Simulation1 {
       this.p5Instance,
     );
 
-    this.p5Instance.fill(255, 0, 0);
-    this.p5Instance.textSize(30);
-    this.p5Instance.textAlign(this.p5Instance.LEFT, this.p5Instance.BOTTOM);
-    this.p5Instance.text("test", 100, 100);
-
     this.p5Instance.pop();
 
     this.p5Instance.drawingContext.enable(
       this.p5Instance.drawingContext.DEPTH_TEST,
     );
 
-    this.p5Instance.camera(...camParams);
+    this.p5Instance.camera(...cameraParams);
   }
 }

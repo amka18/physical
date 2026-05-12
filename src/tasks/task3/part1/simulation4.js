@@ -64,9 +64,9 @@ export default class Simulation4 {
   update(dt) {
     // // ----- ШАГ 1: Получаем текущие параметры -----
     // const I = this.object.inertialTensor; // локальный тензор инерции
-    vec3.copy(this.object.prevAngularVelocity, this.object.angularVelocity);
+    vec3.copy(this.object.angularVelocity, this.object.nextAngularVelocity);
 
-    const ω = this.object.angularVelocity; // текущая угловая скорость
+    const ω = this.object.nextAngularVelocity; // текущая угловая скорость
 
     // // ----- ШАГ 2: Вычисляем текущий момент L = I * ω -----
     // const L = vec3.create();
@@ -83,7 +83,7 @@ export default class Simulation4 {
     // const skewOmega = mat3.create(); // [ω]×
     // const skewL = mat3.create(); // [L]×
     const skewOmega = this.getSkewMatrix(
-      vec3.clone(this.object.angularVelocity),
+      vec3.clone(this.object.nextAngularVelocity),
     );
 
     const skewL = this.getSkewMatrix(vec3.clone(this.object.angularMomentum));
@@ -121,7 +121,7 @@ export default class Simulation4 {
     //   const alpha = vec3.create();
     //   vec3.transformMat3(alpha, gyro, Iinv);
     //   vec3.scale(alpha, alpha, -1);
-    //   vec3.scaleAndAdd(this.object.angularVelocity, ω, alpha, dt);
+    //   vec3.scaleAndAdd(this.object.nextAngularVelocity, ω, alpha, dt);
     // } else {
     //   // ----- ШАГ 7: Вычисляем поправку к угловой скорости -----
     //   // Δω = J⁻¹ * (dt * gyro)
@@ -130,19 +130,19 @@ export default class Simulation4 {
     vec3.scale(correction, correction, dt);
 
     // ----- ШАГ 8: Обновляем угловую скорость ω_new = ω + Δω -----
-    vec3.add(this.object.angularVelocity, ω, correction);
+    vec3.add(this.object.nextAngularVelocity, ω, correction);
     // }
 
     // ----- ШАГ 9: Обновляем момент импульса из новой скорости -----
     // vec3.transformMat3(
     //   this.object.angularMomentum,
-    //   this.object.angularVelocity,
+    //   this.object.nextAngularVelocity,
     //   I,
     // );
     this.object.updateAngularMomentum();
 
     // ----- ШАГ 10: Интегрируем вращение (обновляем кватернион) -----
-    IntegrateQuatLocal(this.object.rotation, this.object.angularVelocity, dt);
+    IntegrateQuatLocal(this.object.nextRotation, this.object.nextAngularVelocity, dt);
   }
 
   draw() {
@@ -191,7 +191,7 @@ export default class Simulation4 {
       this.p5Instance,
     );
 
-    DrawAxes(this.object.position, this.object.rotation, 100, this.p5Instance);
+    DrawAxes(this.object.nextPosition, this.object.nextRotation, 100, this.p5Instance);
 
     this.object.draw();
   }

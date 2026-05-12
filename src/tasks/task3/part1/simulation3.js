@@ -49,7 +49,7 @@ export default class Simulation3 {
     const torque = vec3.create();
     vec3.cross(
       torque,
-      this.object.angularVelocity,
+      this.object.nextAngularVelocity,
       this.object.angularMomentum,
     );
     vec3.scale(torque, torque, -1);
@@ -63,14 +63,14 @@ export default class Simulation3 {
     );
 
     vec3.transformMat3(
-      this.object.angularVelocity,
+      this.object.nextAngularVelocity,
       newAngularMomentum,
       this.object.invertInertialTensor,
     );
 
     vec3.copy(this.object.angularMomentum, newAngularMomentum);
 
-    IntegrateQuatLocal(this.object.rotation, this.object.angularVelocity, dt);
+    IntegrateQuatLocal(this.object.nextRotation, this.object.nextAngularVelocity, dt);
   }
 
   draw() {
@@ -119,7 +119,7 @@ export default class Simulation3 {
       this.p5Instance,
     );
 
-    DrawAxes(this.object.position, this.object.rotation, 100, this.p5Instance);
+    DrawAxes(this.object.nextPosition, this.object.nextRotation, 100, this.p5Instance);
 
     this.object.draw();
   }

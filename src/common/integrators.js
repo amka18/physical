@@ -2,11 +2,11 @@ const { vec3, quat } = glMatrix;
 
 /**
  *
- * @param {*} rotation
+ * @param {*} nextRotation
  * @param {*} globalAngularVelocity
  * @param {*} dt
  */
-export function IntegrateQuatGlobal(rotation, globalAngularVelocity, dt) {
+export function IntegrateQuatGlobal(nextRotation, globalAngularVelocity, dt) {
   const wQuat = quat.fromValues(
     globalAngularVelocity[0],
     globalAngularVelocity[1],
@@ -15,20 +15,20 @@ export function IntegrateQuatGlobal(rotation, globalAngularVelocity, dt) {
   );
 
   const dQuat = quat.create();
-  quat.multiply(dQuat, wQuat, rotation);
+  quat.multiply(dQuat, wQuat, nextRotation);
   quat.scale(dQuat, dQuat, 0.5 * dt);
 
-  quat.add(rotation, rotation, dQuat);
-  quat.normalize(rotation, rotation);
+  quat.add(nextRotation, nextRotation, dQuat);
+  quat.normalize(nextRotation, nextRotation);
 }
 
 /**
  *
- * @param {*} rotation
+ * @param {*} nextRotation
  * @param {*} globalAngularVelocity
  * @param {*} dt
  */
-export function IntegrateQuatLocal(rotation, localAngularVelocity, dt) {
+export function IntegrateQuatLocal(nextRotation, localAngularVelocity, dt) {
   const wQuat = quat.fromValues(
     localAngularVelocity[0],
     localAngularVelocity[1],
@@ -37,9 +37,9 @@ export function IntegrateQuatLocal(rotation, localAngularVelocity, dt) {
   );
 
   const dQuat = quat.create();
-  quat.multiply(dQuat, rotation, wQuat);
+  quat.multiply(dQuat, nextRotation, wQuat);
   quat.scale(dQuat, dQuat, 0.5 * dt);
 
-  quat.add(rotation, rotation, dQuat);
-  quat.normalize(rotation, rotation);
+  quat.add(nextRotation, nextRotation, dQuat);
+  quat.normalize(nextRotation, nextRotation);
 }

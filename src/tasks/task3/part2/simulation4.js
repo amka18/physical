@@ -73,13 +73,13 @@ export default class Simulation1 {
    * @param {vec3} localPoint - точка в локальной системе тела
    * @returns {vec3} точка в мировой системе координат
    * 
-   * Формула: p_world = R * p_local + position
+   * Формула: p_world = R * p_local + nextPosition
    * где R - матрица поворота (кватернион)
    */
   getWorldPoint(object, localPoint) {
     const worldPoint = vec3.create();
-    vec3.transformQuat(worldPoint, localPoint, object.rotation);
-    vec3.add(worldPoint, worldPoint, object.position);
+    vec3.transformQuat(worldPoint, localPoint, object.nextRotation);
+    vec3.add(worldPoint, worldPoint, object.nextPosition);
     return worldPoint;
   }
 
@@ -137,13 +137,13 @@ export default class Simulation1 {
     
     // --- ШАГ 4: Позиционная ошибка для Baumgarte ---
     // C = current_distance - rest_length
-    const positionError = distance - this.constraintRestLength;
+    const nextPositionError = distance - this.constraintRestLength;
     
     // --- ШАГ 5: Векторы от центров масс к точкам прикрепления ---
     const r1 = vec3.create();
     const r2 = vec3.create();
-    vec3.subtract(r1, p1, this.object1.position);
-    vec3.subtract(r2, p2, this.object2.position);
+    vec3.subtract(r1, p1, this.object1.nextPosition);
+    vec3.subtract(r2, p2, this.object2.nextPosition);
     
     // --- ШАГ 6: Вычисляем скорости точек в мировом пространстве ---
     // v_point = v_cm + ω × r
@@ -152,11 +152,11 @@ export default class Simulation1 {
     const omega1_cross_r1 = vec3.create();
     const omega2_cross_r2 = vec3.create();
     
-    vec3.cross(omega1_cross_r1, this.object1.angularVelocity, r1);
-    vec3.cross(omega2_cross_r2, this.object2.angularVelocity, r2);
+    vec3.cross(omega1_cross_r1, this.object1.nextAngularVelocity, r1);
+    vec3.cross(omega2_cross_r2, this.object2.nextAngularVelocity, r2);
     
-    vec3.add(v1_at_point, this.object1.linearVelocity, omega1_cross_r1);
-    vec3.add(v2_at_point, this.object2.linearVelocity, omega2_cross_r2);
+    vec3.add(v1_at_point, this.object1.nextVelocity, omega1_cross_r1);
+    vec3.add(v2_at_point, this.object2.nextVelocity, omega2_cross_r2);
     
     // --- ШАГ 7: Относительная скорость вдоль направления ограничения ---
     const v_rel = vec3.create();
@@ -205,7 +205,7 @@ export default class Simulation1 {
     
     // --- ШАГ 9: Вычисление необходимого импульса ---
     // С Baumgarte stabilization: P = -(v_rel_n + β·C/Δt) / m_eff
-    const baumgarteTerm = this.baumgarteBeta * positionError / dt;
+    const baumgarteTerm = this.baumgarteBeta * nextPositionError / dt;
     let impulseMagnitude = -(v_rel_n + baumgarteTerm) * effectiveMass;
     
     // Ограничиваем импульс для стабильности (опционально)
@@ -224,8 +224,8 @@ export default class Simulation1 {
     vec3.scale(linearImpulse1, impulseVec, 1.0 / this.object1.mass);
     vec3.scale(linearImpulse2, impulseVec, -1.0 / this.object2.mass);
     
-    vec3.add(this.object1.linearVelocity, this.object1.linearVelocity, linearImpulse1);
-    vec3.add(this.object2.linearVelocity, this.object2.linearVelocity, linearImpulse2);
+    vec3.add(this.object1.nextVelocity, this.object1.nextVelocity, linearImpulse1);
+    vec3.add(this.object2.nextVelocity, this.object2.nextVelocity, linearImpulse2);
     
     // Угловой импульс (меняет угловую скорость)
     // Δω = I⁻¹ · (r × P)
@@ -236,8 +236,8 @@ export default class Simulation1 {
     vec3.scale(angularImpulse1, angularImpulse1, impulseMagnitude);
     vec3.scale(angularImpulse2, angularImpulse2, -impulseMagnitude);
     
-    vec3.add(this.object1.angularVelocity, this.object1.angularVelocity, angularImpulse1);
-    vec3.add(this.object2.angularVelocity, this.object2.angularVelocity, angularImpulse2);
+    vec3.add(this.object1.nextAngularVelocity, this.object1.nextAngularVelocity, angularImpulse1);
+    vec3.add(this.object2.nextAngularVelocity, this.object2.nextAngularVelocity, angularImpulse2);
   }
 
   /**
@@ -256,10 +256,10 @@ export default class Simulation1 {
     dt = Math.min(dt, 0.033);
     
     // ===== ШАГ 1: Сохраняем текущие состояния =====
-    const oldPos1 = vec3.clone(this.object1.position);
-    const oldPos2 = vec3.clone(this.object2.position);
-    const oldRot1 = quat.clone(this.object1.rotation);
-    const oldRot2 = quat.clone(this.object2.rotation);
+    const oldPos1 = vec3.clone(this.object1.nextPosition);
+    const oldPos2 = vec3.clone(this.object2.nextPosition);
+    const oldRot1 = quat.clone(this.object1.nextRotation);
+    const oldRot2 = quat.clone(this.object2.nextRotation);
     
     // ===== ШАГ 2: Применяем внешние силы (гравитация) =====
     // F = m * g, где g = 9.8 м/с²
@@ -270,8 +270,8 @@ export default class Simulation1 {
     vec3.scale(force2, gravity, this.object2.mass);
     
     // Обновляем линейные скорости: v = v + (F/m) * dt
-    vec3.scaleAndAdd(this.object1.linearVelocity, this.object1.linearVelocity, force1, dt / this.object1.mass);
-    vec3.scaleAndAdd(this.object2.linearVelocity, this.object2.linearVelocity, force2, dt / this.object2.mass);
+    vec3.scaleAndAdd(this.object1.nextVelocity, this.object1.nextVelocity, force1, dt / this.object1.mass);
+    vec3.scaleAndAdd(this.object2.nextVelocity, this.object2.nextVelocity, force2, dt / this.object2.mass);
     
     // ===== ШАГ 3: Обновляем вращения с гироскопическим слагаемым =====
     // Simplectic Euler с учетом гироскопического момента
@@ -280,8 +280,8 @@ export default class Simulation1 {
     const torque2 = vec3.create();
     
     // Гироскопический момент: τ = -ω × L
-    vec3.cross(torque1, this.object1.angularVelocity, this.object1.angularMomentum);
-    vec3.cross(torque2, this.object2.angularVelocity, this.object2.angularMomentum);
+    vec3.cross(torque1, this.object1.nextAngularVelocity, this.object1.angularMomentum);
+    vec3.cross(torque2, this.object2.nextAngularVelocity, this.object2.angularMomentum);
     vec3.scale(torque1, torque1, -1);
     vec3.scale(torque2, torque2, -1);
     
@@ -290,8 +290,8 @@ export default class Simulation1 {
     vec3.scaleAndAdd(this.object2.angularMomentum, this.object2.angularMomentum, torque2, dt);
     
     // Обновляем угловые скорости: ω = I⁻¹ · L
-    vec3.transformMat3(this.object1.angularVelocity, this.object1.angularMomentum, this.object1.invertInertialTensor);
-    vec3.transformMat3(this.object2.angularVelocity, this.object2.angularMomentum, this.object2.invertInertialTensor);
+    vec3.transformMat3(this.object1.nextAngularVelocity, this.object1.angularMomentum, this.object1.invertInertialTensor);
+    vec3.transformMat3(this.object2.nextAngularVelocity, this.object2.angularMomentum, this.object2.invertInertialTensor);
     
     // ===== ШАГ 4: ИТЕРАТИВНОЕ РЕШЕНИЕ ОГРАНИЧЕНИЙ =====
     // Sequential Impulses: несколько итераций улучшают точность
@@ -303,16 +303,16 @@ export default class Simulation1 {
     
     // ===== ШАГ 5: ИНТЕГРИРОВАНИЕ ПОЗИЦИЙ И ВРАЩЕНИЙ =====
     // Явный Эйлер для позиций: x_new = x_old + v * dt
-    vec3.scaleAndAdd(this.object1.position, this.object1.position, this.object1.linearVelocity, dt);
-    vec3.scaleAndAdd(this.object2.position, this.object2.position, this.object2.linearVelocity, dt);
+    vec3.scaleAndAdd(this.object1.nextPosition, this.object1.nextPosition, this.object1.nextVelocity, dt);
+    vec3.scaleAndAdd(this.object2.nextPosition, this.object2.nextPosition, this.object2.nextVelocity, dt);
     
     // Интегрирование вращений через кватернионы
-    IntegrateQuatLocal(this.object1.rotation, this.object1.angularVelocity, dt);
-    IntegrateQuatLocal(this.object2.rotation, this.object2.angularVelocity, dt);
+    IntegrateQuatLocal(this.object1.nextRotation, this.object1.nextAngularVelocity, dt);
+    IntegrateQuatLocal(this.object2.nextRotation, this.object2.nextAngularVelocity, dt);
     
     // Нормализация кватернионов для численной стабильности
-    quat.normalize(this.object1.rotation, this.object1.rotation);
-    quat.normalize(this.object2.rotation, this.object2.rotation);
+    quat.normalize(this.object1.nextRotation, this.object1.nextRotation);
+    quat.normalize(this.object2.nextRotation, this.object2.nextRotation);
     
     // ===== ШАГ 6: ОБНОВЛЕНИЕ УГЛОВЫХ МОМЕНТОВ =====
     this.object1.updateAngularMomentum();
@@ -322,19 +322,19 @@ export default class Simulation1 {
     const floorY = -150;
     const halfSize = 30;
     
-    if (this.object1.position[1] - halfSize < floorY) {
-      this.object1.position[1] = floorY + halfSize;
-      this.object1.linearVelocity[1] *= -0.3; // Отскок
+    if (this.object1.nextPosition[1] - halfSize < floorY) {
+      this.object1.nextPosition[1] = floorY + halfSize;
+      this.object1.nextVelocity[1] *= -0.3; // Отскок
       // Небольшое трение
-      this.object1.linearVelocity[0] *= 0.98;
-      this.object1.linearVelocity[2] *= 0.98;
+      this.object1.nextVelocity[0] *= 0.98;
+      this.object1.nextVelocity[2] *= 0.98;
     }
     
-    if (this.object2.position[1] - halfSize < floorY) {
-      this.object2.position[1] = floorY + halfSize;
-      this.object2.linearVelocity[1] *= -0.3;
-      this.object2.linearVelocity[0] *= 0.98;
-      this.object2.linearVelocity[2] *= 0.98;
+    if (this.object2.nextPosition[1] - halfSize < floorY) {
+      this.object2.nextPosition[1] = floorY + halfSize;
+      this.object2.nextVelocity[1] *= -0.3;
+      this.object2.nextVelocity[0] *= 0.98;
+      this.object2.nextVelocity[2] *= 0.98;
     }
   }
 

@@ -2,12 +2,12 @@ const { vec3 } = glMatrix;
 
 export function GroundConstraint(object) {
   const halfSize = 40;
-  const minY = object.position[1] - halfSize;
+  const minY = object.nextPosition[1] - halfSize;
   
   if (minY < 0) {
-    object.position[1] += -minY;
-    if (object.linearVelocity[1] < 0) {
-      object.linearVelocity[1] *= -0.3;
+    object.nextPosition[1] += -minY;
+    if (object.nextVelocity[1] < 0) {
+      object.nextVelocity[1] *= -0.3;
     }
   }
 }
@@ -15,8 +15,8 @@ export function GroundConstraint(object) {
 export class BoxBoxCollisionXPBD {
   static solve(objA, objB, compliance, iterations) {
     const halfSize = 40;
-    const posA = objA.position;
-    const posB = objB.position;
+    const posA = objA.nextPosition;
+    const posB = objB.nextPosition;
     
     const delta = vec3.subtract(vec3.create(), posB, posA);
     
@@ -48,8 +48,8 @@ export class BoxBoxCollisionXPBD {
         const correctionA = vec3.scale(vec3.create(), normal, correction * invMassA);
         const correctionB = vec3.scale(vec3.create(), normal, -correction * invMassB);
         
-        vec3.add(objA.position, objA.position, correctionA);
-        vec3.add(objB.position, objB.position, correctionB);
+        vec3.add(objA.nextPosition, objA.nextPosition, correctionA);
+        vec3.add(objB.nextPosition, objB.nextPosition, correctionB);
         
         return true;
       }

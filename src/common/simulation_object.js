@@ -2,24 +2,64 @@ const { mat3, mat4, vec3, vec4, quat } = glMatrix;
 
 export default class SimulationObject {
   // global
+  nextPosition;
   position;
-  prevPosition;
 
+  nextRotation;
   rotation;
-  prevRotation;
 
   scale;
 
-  linearVelocity;
-  prevLinearVelocity;
+  nextVelocity;
+  velocity;
 
   // local
+  nextAngularVelocity;
   angularVelocity;
-  prevAngularVelocity;
 
+  // constants
   inertialTensor;
   invertInertialTensor;
 
+  mass;
+
+  // пркрпеленные штуки
+  localAnchor;
+
+  addAttachmentPoint(localAnchor) {
+    this.localAnchor = vec3.clone(localAnchor);
+  }
+
+  getWorldPositionAttachmentPoint() {
+    const tempVec = vec4.fromValues(
+      this.localAnchor[0],
+      this.localAnchor[1],
+      this.localAnchor[2],
+      1.0,
+    );
+
+    const transformMatrix = mat4.create();
+    mat4.fromRotationTranslationScale(
+      transformMatrix,
+      this.rotation,
+      this.position,
+      this.scale,
+    );
+
+    const worldPosition = vec4.create();
+    vec4.transformMat4(worldPosition, tempVec, transformMatrix);
+
+    return vec3.fromValues(
+      worldPosition[0],
+      worldPosition[1],
+      worldPosition[2],
+    );
+  }
+
+  // вершины
+  worldVertices;
+
+  // потом перепмсать // дошел до сюда /////////////
   angularMomentum;
 
   force;
@@ -27,13 +67,9 @@ export default class SimulationObject {
   applicationPoint;
   effectiveMass;
 
-  mass;
-
   localVertices;
   edgeIndices;
   faceIndices;
-
-  worldVertices;
 
   color;
 
@@ -42,11 +78,11 @@ export default class SimulationObject {
   /**
    * Конструктор SimulationObject
    * @param {number[]} dimensions - [width, height, depth]
-   * @param {number[]} position - [x, y, z]
-   * @param {number[]} rotation - [eulerX, eulerY, eulerZ] в градусах
+   * @param {number[]} nextPosition - [x, y, z]
+   * @param {number[]} nextRotation - [eulerX, eulerY, eulerZ] в градусах
    * @param {number[]} scale - [x, y, z]
-   * @param {number[]} linearVelocity - [vx, vy, vz]
-   * @param {number[]} angularVelocity - [wx, wy, wz]
+   * @param {number[]} nextVelocity - [vx, vy, vz]
+   * @param {number[]} nextAngularVelocity - [wx, wy, wz]
    * @param {number} mass - масса объекта
    * @param {number[]} color - [r, g, b]
    * @param {p5} p5Instance - экземпляр p5.js
@@ -62,23 +98,28 @@ export default class SimulationObject {
     color,
     p5Instance,
   ) {
+    // global parameters
     this.position = position ? vec3.clone(position) : vec3.create();
-    this.prevPosition = vec3.clone(this.position);
+    this.nextPosition = vec3.clone(this.position);
 
-    this.rotation = quat.create();
-    quat.fromEuler(this.rotation, rotation[0], rotation[1], rotation[2]);
-    this.prevRotation = quat.clone(this.rotation);
+    this.rotation = quat.fromValues(0.0, 0.0, 0.0, 1.0);
+    if (rotation) {
+      quat.fromEuler(this.rotation, rotation[0], rotation[1], rotation[2]);
+    }
+
+    this.nextRotation = quat.clone(this.rotation);
 
     this.scale = scale ? vec3.clone(scale) : vec3.fromValues(1.0, 1.0, 1.0);
 
-    this.linearVelocity = velocity ? vec3.clone(velocity) : vec3.create();
-    this.prevLinearVelocity = vec3.clone(this.linearVelocity);
+    this.velocity = velocity ? vec3.clone(velocity) : vec3.create();
+    this.nextVelocity = vec3.clone(this.velocity);
 
     this.angularVelocity = angularVelocity
       ? vec3.clone(angularVelocity)
       : vec3.fromValues(0.0, 0.0, 0.0);
-    this.prevAngularVelocity = vec3.clone(this.angularVelocity);
+    this.nextAngularVelocity = vec3.clone(this.angularVelocity);
 
+    // до сюда проверил все
     this.#initializeInertiaTensor(
       dimensions[0],
       dimensions[1],
@@ -111,7 +152,8 @@ export default class SimulationObject {
    */
   getRotationKineticEnergy() {
     this.updateAngularMomentum();
-    const energy = 0.5 * vec3.dot(this.angularVelocity, this.angularMomentum);
+    const energy =
+      0.5 * vec3.dot(this.nextAngularVelocity, this.angularMomentum);
     return energy;
   }
 
@@ -123,12 +165,12 @@ export default class SimulationObject {
   getWorldAngularVelocity() {
     const rotationMatrix = mat3.create();
 
-    mat3.fromQuat(rotationMatrix, this.rotation);
+    mat3.fromQuat(rotationMatrix, this.nextRotation);
 
     const worldAngularVelocity = vec3.create();
     vec3.transformMat3(
       worldAngularVelocity,
-      this.angularVelocity,
+      this.nextAngularVelocity,
       rotationMatrix,
     );
 
@@ -142,7 +184,7 @@ export default class SimulationObject {
    */
   getWorldInertialTensor() {
     const rotationMatrix = mat3.create();
-    mat3.fromQuat(rotationMatrix, this.rotation);
+    mat3.fromQuat(rotationMatrix, this.nextRotation);
 
     const transposeRotationMatrix = mat3.create();
     mat3.transpose(transposeRotationMatrix, rotationMatrix);
@@ -158,7 +200,7 @@ export default class SimulationObject {
 
   getWorldInvertInertialTensor() {
     const rotationMatrix = mat3.create();
-    mat3.fromQuat(rotationMatrix, this.rotation);
+    mat3.fromQuat(rotationMatrix, this.nextRotation);
 
     const transposeRotationMatrix = mat3.create();
     mat3.transpose(transposeRotationMatrix, rotationMatrix);
@@ -178,7 +220,7 @@ export default class SimulationObject {
 
   getGyro() {
     const gyro = vec3.create();
-    vec3.cross(gyro, this.angularVelocity, this.angularMomentum);
+    vec3.cross(gyro, this.nextAngularVelocity, this.angularMomentum);
 
     return gyro;
   }
@@ -193,7 +235,7 @@ export default class SimulationObject {
 
     const rotationMatrix = mat3.create();
 
-    mat3.fromQuat(rotationMatrix, this.rotation);
+    mat3.fromQuat(rotationMatrix, this.nextRotation);
 
     const worldAngularMomentum = vec3.create();
     vec3.transformMat3(
@@ -211,7 +253,7 @@ export default class SimulationObject {
     const worldApplicationPoint = this.getWorldApplicationPoint();
 
     const arm = vec3.create();
-    vec3.subtract(arm, worldApplicationPoint, this.position);
+    vec3.subtract(arm, worldApplicationPoint, this.nextPosition);
 
     const temp1 = vec3.create();
     vec3.cross(temp1, arm, normalizedDirection);
@@ -236,7 +278,7 @@ export default class SimulationObject {
   updateAngularMomentum() {
     vec3.transformMat3(
       this.angularMomentum,
-      this.angularVelocity,
+      this.nextAngularVelocity,
       this.inertialTensor,
     );
   }
@@ -245,14 +287,14 @@ export default class SimulationObject {
     this.applicationPoint = vec3.clone(applicationPoint);
 
     const momentArm = vec3.create();
-    vec3.sub(momentArm, applicationPoint, this.position);
+    vec3.sub(momentArm, applicationPoint, this.nextPosition);
 
     vec3.cross(this.torque, momentArm, force);
   }
 
   updateTorque(force) {
     const momentArm = vec3.create();
-    vec3.sub(momentArm, this.applicationPoint, this.position);
+    vec3.sub(momentArm, this.applicationPoint, this.nextPosition);
 
     vec3.cross(this.torque, momentArm, force);
   }
@@ -262,8 +304,8 @@ export default class SimulationObject {
 
     mat4.fromRotationTranslationScale(
       modelMatrix,
-      this.rotation,
-      this.position,
+      this.nextRotation,
+      this.nextPosition,
       this.scale,
     );
 
@@ -286,25 +328,25 @@ export default class SimulationObject {
 
   getWorldApplicationPointVelocity() {
     const rotationMatrix = mat3.create();
-    mat3.fromQuat(rotationMatrix, this.rotation);
+    mat3.fromQuat(rotationMatrix, this.nextRotation);
 
     const globalAngularVelocity = vec3.create();
     vec3.transformMat3(
       globalAngularVelocity,
-      this.angularVelocity,
+      this.nextAngularVelocity,
       rotationMatrix,
     );
 
     const worldPoint = this.getWorldApplicationPoint();
 
     const arm = vec3.create();
-    vec3.subtract(arm, worldPoint, this.position);
+    vec3.subtract(arm, worldPoint, this.nextPosition);
 
     const rotationalVelocity = vec3.create();
     vec3.cross(rotationalVelocity, globalAngularVelocity, arm);
 
     const totalVelocity = vec3.create();
-    vec3.add(totalVelocity, this.linearVelocity, rotationalVelocity);
+    vec3.add(totalVelocity, this.nextVelocity, rotationalVelocity);
 
     return totalVelocity;
   }
@@ -437,8 +479,8 @@ export default class SimulationObject {
 
     mat4.fromRotationTranslationScale(
       modelMatrix,
-      this.rotation,
-      this.position,
+      this.nextRotation,
+      this.nextPosition,
       this.scale,
     );
 

@@ -47,12 +47,12 @@ export default class Simulation2 {
 
   update(dt) {
     vec3.transformMat3(
-      this.object.angularVelocity,
+      this.object.nextAngularVelocity,
       this.initialAngularMomentum,
       this.object.invertInertialTensor,
     );
 
-    IntegrateQuatLocal(this.object.rotation, this.object.angularVelocity, dt);
+    IntegrateQuatLocal(this.object.nextRotation, this.object.nextAngularVelocity, dt);
   }
 
   draw() {
@@ -93,7 +93,7 @@ export default class Simulation2 {
       this.p5Instance,
     );
 
-    DrawAxes(this.object.position, this.object.rotation, 100, this.p5Instance);
+    DrawAxes(this.object.nextPosition, this.object.nextRotation, 100, this.p5Instance);
 
     this.object.draw();
   }

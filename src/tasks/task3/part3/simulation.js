@@ -49,27 +49,27 @@ export default class GameEngine {
 
   update(dt) {
     for (let object of this.objects) {
-      vec3.copy(object.prevPosition, object.position);
-      quat.copy(object.prevRotation, object.rotation);
+      vec3.copy(object.position, object.nextPosition);
+      quat.copy(object.rotation, object.nextRotation);
     }
 
     for (let object of this.objects) {
-      vec3.scaleAndAdd(object.position, object.position, object.velocity, dt);
+      vec3.scaleAndAdd(object.nextPosition, object.nextPosition, object.velocity, dt);
 
       // добавим
       let g = vec3.fromValues(0.0, 0.001, 0.0);
-      vec3.scaleAndAdd(object.position, object.position, g, dt);
+      vec3.scaleAndAdd(object.nextPosition, object.nextPosition, g, dt);
 
       let wquat = quat.fromValues(
-        object.angularVelocity[0],
-        object.angularVelocity[1],
-        object.angularVelocity[2],
+        object.nextAngularVelocity[0],
+        object.nextAngularVelocity[1],
+        object.nextAngularVelocity[2],
         0.0,
       );
-      quat.multiply(wquat, wquat, object.rotation);
+      quat.multiply(wquat, wquat, object.nextRotation);
       quat.scale(wquat, wquat, dt * 0.5);
-      quat.add(object.rotation, object.rotation, wquat);
-      quat.normalize(object.rotation, object.rotation);
+      quat.add(object.nextRotation, object.nextRotation, wquat);
+      quat.normalize(object.nextRotation, object.nextRotation);
     }
 
     // коллизии или ограничени
@@ -82,12 +82,12 @@ export default class GameEngine {
 
     // обновляем скорость по изменению позиции
     for (let object of this.objects) {
-      vec3.sub(object.velocity, object.position, object.prevPosition);
+      vec3.sub(object.velocity, object.nextPosition, object.position);
       vec3.scale(object.velocity, object.velocity, 1.0 / dt);
 
       // let deltaQuat = quat.create();
       // quat.conjugate(object.prevRotationRaw, object.prevRotationRaw);
-      // quat.multiply(deltaQuat, object.rotation, object.prevRotationRaw);
+      // quat.multiply(deltaQuat, object.nextRotation, object.prevRotationRaw);
 
       // // Извлекаем векторную часть (оси) и нормализуем
       // let angle = 2 * Math.acos(Math.min(1, Math.abs(deltaQuat[3])));
@@ -95,7 +95,7 @@ export default class GameEngine {
       // vec3.normalize(axis, axis);
 
       // // Угловая скорость = угол * ось / dt
-      // vec3.scale(object.angularVelocity, axis, angle / dt);
+      // vec3.scale(object.nextAngularVelocity, axis, angle / dt);
     }
   }
 
