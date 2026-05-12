@@ -90,7 +90,7 @@ const sketch3 = (p5) => {
   let font;
 
   p5.preload = () => {
-    font = p5.loadFont("../../../../../assets/font/font.otf");
+    font = p5.loadFont("/assets/font/font.ttf");
   };
 
   p5.setup = () => {
