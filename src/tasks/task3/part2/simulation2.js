@@ -55,24 +55,24 @@ export default class Simulation2 {
       p5Instance,
     );
 
-    this.springAnchorPoint = vec3.fromValues(-50, 40, 250);
-    this.object.addAttachmentPoint(vec3.fromValues(20.0, 0.0, 40.0));
+    this.springAnchorPoint = vec3.fromValues(0, 40, 250);
+    this.object.addAttachmentPoint(vec3.fromValues(10.0, 0.0, 40.0));
     this.worldAttachmentPoint = vec3.fromValues(0.0, 0.0, 0.0);
     this.springCurrentLength = 0.0;
-    this.springRestLength = 200.0;
-    this.springStiffness = 0.00001;
+    this.springRestLength = 150.0;
+    this.springStiffness = 0.0001;
     this.springDamping = 0.01;
     this.springForce1 = 0.0;
     this.springForce2 = 0.0;
-    this.springFreqParam = 0.1;
+    this.springFreqParam = 0.001;
   }
 
   setCamera() {
     this.camera = this.p5Instance.createCamera();
+    this.p5Instance.camera(0, 600, 1000, 0, 0, 0, 0, 1, 0);
   }
 
   update(dt) {
-    // ОБНОВЛЯЕМ
     const obj = this.object;
 
     vec3.copy(obj.position, obj.nextPosition);
@@ -80,11 +80,8 @@ export default class Simulation2 {
     vec3.copy(obj.velocity, obj.nextVelocity);
     vec3.copy(obj.angularVelocity, obj.nextAngularVelocity);
 
-    // НАХОДИМ СИЛЫ
-    // обновляем мировую координату точки соприкосеовения
     this.worldAttachmentPoint = obj.getWorldPositionAttachmentPoint();
 
-    // расчитываем закон гука
     const springToObjectDir = vec3.create();
     vec3.sub(
       springToObjectDir,
@@ -94,42 +91,26 @@ export default class Simulation2 {
     const springObjectDirN = vec3.create();
     vec3.normalize(springObjectDirN, springToObjectDir);
     this.springCurrentLength = vec3.length(springToObjectDir);
+
     this.springForce1 =
       (this.springRestLength - this.springCurrentLength) * this.springStiffness;
-    const force1 = vec3.create();
-    vec3.normalize(force1, springToObjectDir);
-    vec3.scale(force1, force1, this.springForce1);
-
-    // демпфирование
+    const forceSpring = vec3.create();
+    vec3.normalize(forceSpring, springToObjectDir);
+    vec3.scale(forceSpring, forceSpring, this.springForce1);
     const attachmentPointVelocity = vec3.clone(obj.velocity);
     const rotateVelocity = vec3.create();
     vec3.cross(rotateVelocity, obj.angularVelocity, obj.localAnchor);
     vec3.add(attachmentPointVelocity, attachmentPointVelocity, rotateVelocity);
 
-    // const force2 = vec3.create();
-    // vec3.scale(force2, attachmentPointVelocity, this.springDamping);
-
-    // const force = vec3.create();
-    // vec3.add(force, force, force1);
-    // vec3.sub(force, force, force2);
-
-    // переводм силу в локальные координаты
-    // const rotationMatrix = mat3.create();
-    // mat3.fromQuat(rotationMatrix, obj.rotation);
-    // const invertRotationMatrix = mat3.create();
-    // mat3.invert(invertRotationMatrix, rotationMatrix);
-    // const localForce = vec3.create();
-    // vec3.transformMat3(localForce, force, invertRotationMatrix);
-
-    // расчитываем локальный момент
-    // const localTorque = vec3.create();
-    // vec3.cross(localTorque, obj.localAnchor, force);
-
-    // РАСЧЕТ ЭФФЕКТИВНОЙ МАССЫ
     const arm = vec3.create();
     vec3.sub(arm, this.worldAttachmentPoint, obj.position);
-    const tempN = vec3.create(); //
+
+    const tempN = vec3.create();
     vec3.scale(tempN, springObjectDirN, -1);
+
+    const torque = vec3.create();
+    vec3.cross(torque, arm, forceSpring);
+
     const tempCross1 = vec3.create();
     vec3.cross(tempCross1, arm, tempN);
     const invertWorldInertialTensor = obj.getWorldInvertInertialTensor();
@@ -137,9 +118,8 @@ export default class Simulation2 {
     vec3.transformMat3(temp2, tempCross1, invertWorldInertialTensor);
     const rotationalTemp = vec3.dot(tempCross1, temp2);
     const invEffMass = 1 / obj.mass + rotationalTemp;
-
-    // Пружина
     const effMass = 1.0 / invEffMass;
+
     const Jv =
       -vec3.dot(tempN, obj.velocity) -
       vec3.dot(tempCross1, obj.angularVelocity);
@@ -153,32 +133,32 @@ export default class Simulation2 {
       -(Jv + (beta * (this.springRestLength - this.springCurrentLength)) / dt) /
       gamma;
 
-    const toSpringPoint = vec3.create();
-    vec3.normalize(toSpringPoint, springToObjectDir);
-    const forceL1 = vec3.create();
-    vec3.scale(forceL1, toSpringPoint, -lambda);
+    const impulseLinear = vec3.create();
+    vec3.scale(impulseLinear, tempN, lambda);
+    vec3.scaleAndAdd(
+      obj.nextVelocity,
+      obj.velocity,
+      impulseLinear,
+      1 / obj.mass,
+    );
 
-    const forceL2 = vec3.create();
-    vec3.normalize(forceL2, tempCross1);
-    vec3.scale(forceL2, forceL2, -lambda);
+    const impulseAngular = vec3.create();
+    vec3.scale(impulseAngular, tempCross1, lambda);
+    vec3.transformMat3(
+      impulseAngular,
+      impulseAngular,
+      invertWorldInertialTensor,
+    );
+    vec3.add(obj.nextAngularVelocity, obj.angularVelocity, impulseAngular);
 
-    // update velocity (обновляем скорости)
-    const acceleration = vec3.create();
-    vec3.scale(acceleration, forceL1, invEffMass);
-    vec3.scaleAndAdd(obj.nextVelocity, obj.velocity, acceleration, dt);
-
-    // const angularAcceleration = vec3.create();
-    // vec3.transformMat3(angularAcceleration, forceL2, obj.invertInertialTensor);
-    // vec3.scaleAndAdd(
-    //   obj.nextAngularVelocity,
-    //   obj.angularVelocity,
-    //   angularAcceleration,
-    //   dt,
-    // );
-
-    // // передвигаем позиции
     vec3.scaleAndAdd(obj.nextPosition, obj.position, obj.nextVelocity, dt);
-    IntegrateQuatLocal(obj.nextRotation, obj.nextAngularVelocity, dt);
+
+    const deltaRotation = quat.create();
+    const halfAngle = vec3.create();
+    vec3.scale(halfAngle, obj.nextAngularVelocity, dt * 0.5);
+    quat.fromValues(deltaRotation, halfAngle[0], halfAngle[1], halfAngle[2], 1);
+    quat.normalize(deltaRotation, deltaRotation);
+    quat.multiply(obj.nextRotation, deltaRotation, obj.rotation);
   }
 
   draw() {

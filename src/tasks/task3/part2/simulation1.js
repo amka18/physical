@@ -54,23 +54,23 @@ export default class Simulation1 {
       p5Instance,
     );
 
-    this.springAnchorPoint = vec3.fromValues(-50, 40, 250);
-    this.object.addAttachmentPoint(vec3.fromValues(20.0, 0.0, 40.0));
+    this.springAnchorPoint = vec3.fromValues(0, 40, 250);
+    this.object.addAttachmentPoint(vec3.fromValues(0.0, 0.0, 40.0));
     this.worldAttachmentPoint = vec3.fromValues(0.0, 0.0, 0.0);
     this.springCurrentLength = 0.0;
-    this.springRestLength = 200.0;
-    this.springStiffness = 0.00001;
-    this.springDamping = 0.001;
+    this.springRestLength = 150.0;
+    this.springStiffness = 0.001;
+    this.springDamping = 0.01;
     this.springForce1 = 0.0;
     this.springForce2 = 0.0;
   }
 
   setCamera() {
     this.camera = this.p5Instance.createCamera();
+    this.p5Instance.camera(0, 600, 1000, 0, 0, 0, 0, 1, 0);
   }
 
   update(dt) {
-    // ОБНОВЛЯЕМ
     const obj = this.object;
 
     vec3.copy(obj.position, obj.nextPosition);
@@ -78,11 +78,8 @@ export default class Simulation1 {
     vec3.copy(obj.velocity, obj.nextVelocity);
     vec3.copy(obj.angularVelocity, obj.nextAngularVelocity);
 
-    // НАХОДИМ СИЛЫ
-    // обновляем мировую координату точки соприкосеовения
     this.worldAttachmentPoint = obj.getWorldPositionAttachmentPoint();
 
-    // расчитываем закон гука
     const springToObjectDir = vec3.create();
     vec3.sub(
       springToObjectDir,
@@ -98,7 +95,6 @@ export default class Simulation1 {
     vec3.normalize(force1, springToObjectDir);
     vec3.scale(force1, force1, this.springForce1);
 
-    // демпфирование
     const attachmentPointVelocity = vec3.clone(obj.velocity);
     const rotateVelocity = vec3.create();
     vec3.cross(rotateVelocity, obj.angularVelocity, obj.localAnchor);
@@ -111,7 +107,6 @@ export default class Simulation1 {
     vec3.add(force, force, force1);
     vec3.sub(force, force, force2);
 
-    // переводм силу в локальные координаты
     const rotationMatrix = mat3.create();
     mat3.fromQuat(rotationMatrix, obj.rotation);
     const invertRotationMatrix = mat3.create();
@@ -119,11 +114,9 @@ export default class Simulation1 {
     const localForce = vec3.create();
     vec3.transformMat3(localForce, force, invertRotationMatrix);
 
-    // расчитываем локальный момент
     const localTorque = vec3.create();
     vec3.cross(localTorque, obj.localAnchor, force);
 
-    // РАСЧЕТ ЭФФЕКТИВНОЙ МАССЫ
     const arm = vec3.create();
     vec3.sub(arm, this.worldAttachmentPoint, obj.position);
     const tempN = vec3.create(); //
@@ -136,7 +129,6 @@ export default class Simulation1 {
     const rotationalTemp = vec3.dot(tempCross1, temp2);
     const invEffMass = 1 / obj.mass + rotationalTemp;
 
-    // update velocity (обновляем скорости)
     const acceleration = vec3.create();
     vec3.scale(acceleration, force, invEffMass);
     vec3.scaleAndAdd(obj.nextVelocity, obj.velocity, acceleration, dt);
@@ -154,7 +146,6 @@ export default class Simulation1 {
       dt,
     );
 
-    // // передвигаем позиции
     vec3.scaleAndAdd(obj.nextPosition, obj.position, obj.nextVelocity, dt);
     IntegrateQuatLocal(obj.nextRotation, obj.nextAngularVelocity, dt);
   }
