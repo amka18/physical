@@ -28,7 +28,7 @@ const sketch1 = (p5) => {
   let font;
 
   p5.preload = () => {
-    font = p5.loadFont("/assets/font/font.ttf");
+    font = p5.loadFont("assets/font/font.ttf");
   };
 
   p5.setup = () => {
@@ -59,7 +59,7 @@ const sketch2 = (p5) => {
   let font;
 
   p5.preload = () => {
-    font = p5.loadFont("/assets/font/font.ttf");
+    font = p5.loadFont("assets/font/font.ttf");
   };
 
   p5.setup = () => {
@@ -90,7 +90,7 @@ const sketch3 = (p5) => {
   let font;
 
   p5.preload = () => {
-    font = p5.loadFont("/assets/font/font.ttf");
+    font = p5.loadFont("assets/font/font.ttf");
   };
 
   p5.setup = () => {
