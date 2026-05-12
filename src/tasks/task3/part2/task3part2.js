@@ -36,6 +36,7 @@ const sketch1 = (p5) => {
     p5.createCanvas(400, 400, p5.WEBGL);
     p5.textFont(font);
 
+    simulation.setCamera();
     timer.reset();
   };
 

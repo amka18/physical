@@ -22,6 +22,11 @@ export default class SimulationObject {
 
   angularMomentum;
 
+  force;
+  torque;
+  applicationPoint;
+  effectiveMass;
+
   mass;
 
   localVertices;
@@ -83,6 +88,11 @@ export default class SimulationObject {
 
     this.angularMomentum = vec3.create();
     this.updateAngularMomentum();
+
+    //
+    this.force = vec3.create();
+    this.torque = vec3.create();
+    this.applicationPoint = vec3.create();
 
     this.mass = mass;
 
@@ -146,6 +156,26 @@ export default class SimulationObject {
     return worldInertialTensor;
   }
 
+  getWorldInvertInertialTensor() {
+    const rotationMatrix = mat3.create();
+    mat3.fromQuat(rotationMatrix, this.rotation);
+
+    const transposeRotationMatrix = mat3.create();
+    mat3.transpose(transposeRotationMatrix, rotationMatrix);
+
+    const tempMatrix = mat3.create();
+    mat3.multiply(
+      tempMatrix,
+      this.invertInertialTensor,
+      transposeRotationMatrix,
+    );
+
+    const worldInertialTensor = mat3.create();
+    mat3.multiply(worldInertialTensor, rotationMatrix, tempMatrix);
+
+    return worldInertialTensor;
+  }
+
   getGyro() {
     const gyro = vec3.create();
     vec3.cross(gyro, this.angularVelocity, this.angularMomentum);
@@ -175,6 +205,30 @@ export default class SimulationObject {
     return worldAngularMomentum;
   }
 
+  getEffMass(direction) {
+    const normalizedDirection = vec3.normalize(direction);
+
+    const worldApplicationPoint = this.getWorldApplicationPoint();
+
+    const arm = vec3.create();
+    vec3.subtract(arm, worldApplicationPoint, this.position);
+
+    const temp1 = vec3.create();
+    vec3.cross(temp1, arm, normalizedDirection);
+
+    const invertWorldInertialTensor = this.getWorldInvertInertialTensor();
+
+    const temp2 = vec3.create();
+    vec3.transformMat3(temp2, temp1, worldInvertInertialTensor);
+
+    const rotationalTerm = vec3.dot(temp1, temp2);
+
+    const invMass = 1 / this.mass;
+    const invEffMass = invMass + rotationalTerm;
+
+    return 1 / invEffMass;
+  }
+
   /**
    * Обновление локального углового момента
    * L_local = I_local * ω_local
@@ -185,6 +239,74 @@ export default class SimulationObject {
       this.angularVelocity,
       this.inertialTensor,
     );
+  }
+
+  addForce(force, applicationPoint) {
+    this.applicationPoint = vec3.clone(applicationPoint);
+
+    const momentArm = vec3.create();
+    vec3.sub(momentArm, applicationPoint, this.position);
+
+    vec3.cross(this.torque, momentArm, force);
+  }
+
+  updateTorque(force) {
+    const momentArm = vec3.create();
+    vec3.sub(momentArm, this.applicationPoint, this.position);
+
+    vec3.cross(this.torque, momentArm, force);
+  }
+
+  getWorldApplicationPoint() {
+    const modelMatrix = mat4.create();
+
+    mat4.fromRotationTranslationScale(
+      modelMatrix,
+      this.rotation,
+      this.position,
+      this.scale,
+    );
+
+    const applicationPoint4 = vec4.fromValues(
+      this.applicationPoint[0],
+      this.applicationPoint[1],
+      this.applicationPoint[2],
+      1.0,
+    );
+
+    const worldApplicationPoint = vec4.create();
+    vec4.transformMat4(worldApplicationPoint, applicationPoint4, modelMatrix);
+
+    return vec3.fromValues(
+      worldApplicationPoint[0],
+      worldApplicationPoint[1],
+      worldApplicationPoint[2],
+    );
+  }
+
+  getWorldApplicationPointVelocity() {
+    const rotationMatrix = mat3.create();
+    mat3.fromQuat(rotationMatrix, this.rotation);
+
+    const globalAngularVelocity = vec3.create();
+    vec3.transformMat3(
+      globalAngularVelocity,
+      this.angularVelocity,
+      rotationMatrix,
+    );
+
+    const worldPoint = this.getWorldApplicationPoint();
+
+    const arm = vec3.create();
+    vec3.subtract(arm, worldPoint, this.position);
+
+    const rotationalVelocity = vec3.create();
+    vec3.cross(rotationalVelocity, globalAngularVelocity, arm);
+
+    const totalVelocity = vec3.create();
+    vec3.add(totalVelocity, this.linearVelocity, rotationalVelocity);
+
+    return totalVelocity;
   }
 
   /**

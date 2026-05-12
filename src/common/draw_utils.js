@@ -32,6 +32,8 @@ export function OutputVector(
 
   p5Instance.push();
 
+  p5Instance.resetMatrix();
+
   p5Instance.fill(color[0], color[1], color[2]);
   p5Instance.text(
     `${prompt}: ${formattedVector}`,
@@ -56,18 +58,24 @@ export function OutputValue(
   prompt,
   value,
   decimals,
+  size,
   position,
   color,
   p5Instance,
 ) {
   p5Instance.push();
 
+  // p5Instance.resetMatrix();
+
+  // p5Instance.translate(-p5Instance.width / 2, -p5Instance.height / 2);
+
+  p5Instance.textSize(size);
+
   p5Instance.fill(color[0], color[1], color[2]);
   p5Instance.text(
     `${prompt}: ${value.toFixed(decimals)}`,
     position[0],
     position[1],
-    position[2],
   );
 
   p5Instance.pop();
@@ -119,6 +127,7 @@ export function DrawAxes(position, orientation, length, p5Instance) {
   ];
 
   p5Instance.push();
+
   p5Instance.strokeWeight(2);
 
   axes.forEach((axis) => {
