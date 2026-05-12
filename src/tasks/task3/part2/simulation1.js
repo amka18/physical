@@ -89,6 +89,8 @@ export default class Simulation1 {
       this.worldAttachmentPoint,
       this.springAnchorPoint,
     );
+    const springObjectDirN = vec3.create();
+    vec3.normalize(springObjectDirN, springToObjectDir);
     this.springCurrentLength = vec3.length(springToObjectDir);
     this.springForce1 =
       (this.springRestLength - this.springCurrentLength) * this.springStiffness;
@@ -125,9 +127,9 @@ export default class Simulation1 {
     const arm = vec3.create();
     vec3.sub(arm, this.worldAttachmentPoint, obj.position);
     const tempN = vec3.create(); //
-    vec3.scale(tempN, springToObjectDir, -1);
+    vec3.scale(tempN, springObjectDirN, -1);
     const tempCross1 = vec3.create();
-    vec3.cross(arm, arm, tempN);
+    vec3.cross(tempCross1, arm, tempN);
     const invertWorldInertialTensor = obj.getWorldInvertInertialTensor();
     const temp2 = vec3.create();
     vec3.transformMat3(temp2, tempCross1, invertWorldInertialTensor);
