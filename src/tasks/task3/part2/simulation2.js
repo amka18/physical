@@ -61,7 +61,7 @@ export default class Simulation2 {
     this.springCurrentLength = 0.0;
     this.springRestLength = 150.0;
     this.springStiffness = 0.0001;
-    this.springDamping = 0.01;
+    this.springDamping = 0.00001;
     this.springForce1 = 0.0;
     this.springForce2 = 0.0;
     this.springFreqParam = 0.001;
@@ -75,73 +75,87 @@ export default class Simulation2 {
   update(dt) {
     const obj = this.object;
 
+    // Копируем текущее состояние в "предыдущее"
     vec3.copy(obj.position, obj.nextPosition);
     quat.copy(obj.rotation, obj.nextRotation);
     vec3.copy(obj.velocity, obj.nextVelocity);
     vec3.copy(obj.angularVelocity, obj.nextAngularVelocity);
 
+    // Получаем мировую позицию точки крепления пружины на объекте
     this.worldAttachmentPoint = obj.getWorldPositionAttachmentPoint();
 
+    // Вычисляем вектор от якоря к точке крепления на объекте
     const springToObjectDir = vec3.create();
     vec3.sub(
       springToObjectDir,
       this.worldAttachmentPoint,
       this.springAnchorPoint,
     );
-    const springObjectDirN = vec3.create();
-    vec3.normalize(springObjectDirN, springToObjectDir);
     this.springCurrentLength = vec3.length(springToObjectDir);
 
-    this.springForce1 =
-      (this.springRestLength - this.springCurrentLength) * this.springStiffness;
-    const forceSpring = vec3.create();
-    vec3.normalize(forceSpring, springToObjectDir);
-    vec3.scale(forceSpring, forceSpring, this.springForce1);
-    const attachmentPointVelocity = vec3.clone(obj.velocity);
-    const rotateVelocity = vec3.create();
-    vec3.cross(rotateVelocity, obj.angularVelocity, obj.localAnchor);
-    vec3.add(attachmentPointVelocity, attachmentPointVelocity, rotateVelocity);
+    // Нормализуем направление (Якобиан J)
+    const springObjectDirN = vec3.create();
+    vec3.normalize(springObjectDirN, springToObjectDir);
 
+    // Вычисляем рычаг (r) от центра масс объекта до точки крепления
     const arm = vec3.create();
     vec3.sub(arm, this.worldAttachmentPoint, obj.position);
 
-    const tempN = vec3.create();
-    vec3.scale(tempN, springObjectDirN, -1);
-
-    const torque = vec3.create();
-    vec3.cross(torque, arm, forceSpring);
-
+    // Вычисляем tempCross1 = r x n (для угловой части)
     const tempCross1 = vec3.create();
-    vec3.cross(tempCross1, arm, tempN);
+    vec3.cross(tempCross1, arm, springObjectDirN);
+
+    // Вычисляем эффективную массу (K = 1/m + (r x n)^T * I^-1 * (r x n))
+    // invertWorldInertialTensor должен быть мировым обратным тензором инерции
     const invertWorldInertialTensor = obj.getWorldInvertInertialTensor();
     const temp2 = vec3.create();
     vec3.transformMat3(temp2, tempCross1, invertWorldInertialTensor);
     const rotationalTemp = vec3.dot(tempCross1, temp2);
-    const invEffMass = 1 / obj.mass + rotationalTemp;
-    const effMass = 1.0 / invEffMass;
+    const invEffMass = 1.0 / obj.mass + rotationalTemp; // Это K
+    const effMass = 1.0 / invEffMass; // Это 1/K
 
-    const Jv =
-      -vec3.dot(tempN, obj.velocity) -
-      vec3.dot(tempCross1, obj.angularVelocity);
-    const k = effMass * this.springFreqParam ** 2;
-    const c = 2.0 * effMass * this.springDamping * this.springFreqParam;
-    const demon = c + dt * k;
-    const beta = (dt * k) / demon;
-    const gamma = 1.0 / demon;
+    // --- Параметры мягкого ограничения ---
+    // ВАЖНО: Используем частоту в Герцах! Например, 5 Гц.
+    const frequencyHz = 5.0; // Замените на this.frequencyHz
+    const dampingRatio = this.springDamping; // Обычно от 0 до 1 (у вас 0.01)
 
-    const lambda =
-      -(Jv + (beta * (this.springRestLength - this.springCurrentLength)) / dt) /
-      gamma;
+    const omega = 2.0 * Math.PI * frequencyHz;
+    const k = effMass * omega * omega;
+    const c = 2.0 * effMass * dampingRatio * omega;
 
+    // Вычисляем beta и gamma (softness)
+    const demon = c + dt * k; // Знаменатель
+    const beta = (dt * k) / demon; // Коэффициент Baumgarte
+    const gamma = 1.0 / demon; // Softness (податливость)
+
+    // Вычисляем ошибку constraint'а (C)
+    const C = this.springRestLength - this.springCurrentLength;
+
+    // Вычисляем относительную скорость вдоль constraint'а (Jv)
+    // Скорость точки крепления с учетом вращения
+    const attachmentPointVelocity = vec3.clone(obj.velocity);
+    const rotateVelocity = vec3.create();
+    vec3.cross(rotateVelocity, obj.angularVelocity, arm);
+    vec3.add(attachmentPointVelocity, attachmentPointVelocity, rotateVelocity);
+
+    // Проекция относительной скорости на направление constraint'а
+    const Jv = vec3.dot(springObjectDirN, attachmentPointVelocity);
+
+    // Вычисляем lambda (импульс) по формуле из статьи:
+    // lambda = - (Jv + beta * C / dt) / (K + gamma)
+    const lambda = -(Jv + (beta * C) / dt) / (invEffMass + gamma);
+
+    // Применяем линейный импульс
     const impulseLinear = vec3.create();
-    vec3.scale(impulseLinear, tempN, lambda);
+    vec3.scale(impulseLinear, springObjectDirN, lambda);
     vec3.scaleAndAdd(
       obj.nextVelocity,
       obj.velocity,
       impulseLinear,
-      1 / obj.mass,
+      1.0 / obj.mass,
     );
 
+    // Применяем угловой импульс
     const impulseAngular = vec3.create();
     vec3.scale(impulseAngular, tempCross1, lambda);
     vec3.transformMat3(
@@ -151,12 +165,18 @@ export default class Simulation2 {
     );
     vec3.add(obj.nextAngularVelocity, obj.angularVelocity, impulseAngular);
 
+    // Интегрируем позицию и ориентацию
     vec3.scaleAndAdd(obj.nextPosition, obj.position, obj.nextVelocity, dt);
 
-    const deltaRotation = quat.create();
     const halfAngle = vec3.create();
     vec3.scale(halfAngle, obj.nextAngularVelocity, dt * 0.5);
-    quat.fromValues(deltaRotation, halfAngle[0], halfAngle[1], halfAngle[2], 1);
+    // Исправление: quat.fromValues принимает (x, y, z, w)
+    const deltaRotation = quat.fromValues(
+      halfAngle[0],
+      halfAngle[1],
+      halfAngle[2],
+      1,
+    );
     quat.normalize(deltaRotation, deltaRotation);
     quat.multiply(obj.nextRotation, deltaRotation, obj.rotation);
   }
