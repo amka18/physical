@@ -6,20 +6,20 @@ const { vec3, quat } = glMatrix;
  * @param {*} globalAngularVelocity
  * @param {*} dt
  */
-export function IntegrateQuatGlobal(nextRotation, globalAngularVelocity, dt) {
+export function IntegrateQuatGlobal(rotation, angularVelocity, dt) {
   const wQuat = quat.fromValues(
-    globalAngularVelocity[0],
-    globalAngularVelocity[1],
-    globalAngularVelocity[2],
+    angularVelocity[0],
+    angularVelocity[1],
+    angularVelocity[2],
     0.0,
   );
 
   const dQuat = quat.create();
-  quat.multiply(dQuat, wQuat, nextRotation);
+  quat.multiply(dQuat, wQuat, rotation);
   quat.scale(dQuat, dQuat, 0.5 * dt);
 
-  quat.add(nextRotation, nextRotation, dQuat);
-  quat.normalize(nextRotation, nextRotation);
+  quat.add(rotation, rotation, dQuat);
+  quat.normalize(rotation, rotation);
 }
 
 /**

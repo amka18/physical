@@ -1,5 +1,6 @@
-import SimulationObject from "../../../common/simulation_object.js";
+import SceneObject from "./scene_object.js";
 import Plane from "../../../common/plane.js";
+import Spring from "./spring.js";
 import {
   IntegrateQuatGlobal,
   IntegrateQuatLocal,
@@ -15,36 +16,34 @@ import { GetLength } from "../../../common/utils.js";
 const { mat3, mat4, vec3, quat } = glMatrix;
 
 export default class Simulation1 {
-  object;
   plane;
+  spring;
+  object;
+
+  subStepCount;
 
   p5Instance;
   camera;
-
-  springAnchorPoint;
-  worldAttachmentPoint;
-
-  springCurrentLength;
-  springRestLength;
-
-  springStiffness;
-  springDamping;
-
-  springForce1;
-  springForce2;
 
   constructor(p5Instance) {
     this.p5Instance = p5Instance;
 
     this.plane = new Plane(500, [50, 150, 50], p5Instance);
 
-    this.object = new SimulationObject(
+    this.spring = new Spring(
+      vec3.fromValues(0.0, 40.0, 250.0),
+      0.0001,
+      0.001,
+      205,
+    );
+
+    this.object = new SceneObject(
       [80, 80, 80],
-      vec3.fromValues(0, 40, 0),
-      vec3.fromValues(0, 0, 0),
-      vec3.fromValues(1, 1, 1),
+      vec3.fromValues(0, 40.0, 0),
       vec3.fromValues(0, 0, 0),
       vec3.fromValues(0, 0, 0),
+      vec3.fromValues(0, 0, 0),
+      vec3.fromValues(10, 0, 40),
       10,
       vec3.fromValues(
         Math.floor(this.p5Instance.random(255)),
@@ -54,15 +53,7 @@ export default class Simulation1 {
       p5Instance,
     );
 
-    this.springAnchorPoint = vec3.fromValues(0, 40, 250);
-    this.object.addAttachmentPoint(vec3.fromValues(0.0, 0.0, 40.0));
-    this.worldAttachmentPoint = vec3.fromValues(0.0, 0.0, 0.0);
-    this.springCurrentLength = 0.0;
-    this.springRestLength = 150.0;
-    this.springStiffness = 0.001;
-    this.springDamping = 0.01;
-    this.springForce1 = 0.0;
-    this.springForce2 = 0.0;
+    this.subStepCount = 10;
   }
 
   setCamera() {
@@ -71,83 +62,70 @@ export default class Simulation1 {
   }
 
   update(dt) {
-    const obj = this.object;
+    const h = dt / this.subStepCount;
 
-    vec3.copy(obj.position, obj.nextPosition);
-    quat.copy(obj.rotation, obj.nextRotation);
-    vec3.copy(obj.velocity, obj.nextVelocity);
-    vec3.copy(obj.angularVelocity, obj.nextAngularVelocity);
+    for (let i = 0; i < this.subStepCount; i++) {
+      const obj = this.object;
 
-    this.worldAttachmentPoint = obj.getWorldPositionAttachmentPoint();
+      const spring = this.spring;
+      spring.attachmentPos = obj.getWorldAttachmentPoint();
+      const n = vec3.create();
+      vec3.sub(n, spring.attachmentPos, spring.anchorPos);
+      spring.currentLength = vec3.length(n);
+      vec3.normalize(n, n);
+      const dl = spring.currentLength - spring.restLength;
+      const fe = vec3.create();
+      vec3.scale(fe, n, -spring.stiffness * dl);
 
-    const springToObjectDir = vec3.create();
-    vec3.sub(
-      springToObjectDir,
-      this.worldAttachmentPoint,
-      this.springAnchorPoint,
-    );
-    const springObjectDirN = vec3.create();
-    vec3.normalize(springObjectDirN, springToObjectDir);
-    this.springCurrentLength = vec3.length(springToObjectDir);
-    this.springForce1 =
-      (this.springRestLength - this.springCurrentLength) * this.springStiffness;
-    const force1 = vec3.create();
-    vec3.normalize(force1, springToObjectDir);
-    vec3.scale(force1, force1, this.springForce1);
+      const attachmentV = vec3.create();
+      const tempV = vec3.create();
+      vec3.cross(tempV, obj.angularVelocity, obj.attachmentPoint);
+      vec3.add(attachmentV, obj.velocity, tempV);
+      const fd = vec3.create();
+      vec3.scale(fd, attachmentV, spring.damping);
 
-    const attachmentPointVelocity = vec3.clone(obj.velocity);
-    const rotateVelocity = vec3.create();
-    vec3.cross(rotateVelocity, obj.angularVelocity, obj.localAnchor);
-    vec3.add(attachmentPointVelocity, attachmentPointVelocity, rotateVelocity);
+      const f = vec3.create();
+      if (vec3.length(f) < 0.001) {
+        vec3.set(f, 0,0, 0.0, 0.0);
+      }
+      vec3.sub(f, fe, fd);
+      const torque = vec3.create();
+      vec3.cross(torque, obj.attachmentPoint, f);
 
-    const force2 = vec3.create();
-    vec3.scale(force2, attachmentPointVelocity, this.springDamping);
+      vec3.copy(obj.prevPosition, obj.position);
+      vec3.scaleAndAdd(obj.velocity, obj.velocity, f, h / obj.mass);
+      vec3.scaleAndAdd(obj.position, obj.position, obj.velocity, h);
 
-    const force = vec3.create();
-    vec3.add(force, force, force1);
-    vec3.sub(force, force, force2);
+      quat.copy(obj.prevRotation, obj.rotation);
+      const I = obj.getWorldInertialTensor();
+      const invI = mat3.create();
+      mat3.invert(invI, I);
+      const gero = obj.getGero();
+      const tempVec1 = vec3.create();
+      vec3.sub(tempVec1, torque, gero);
+      vec3.transformMat3(tempVec1, tempVec1, invI);
+      vec3.scaleAndAdd(obj.angularVelocity, obj.angularVelocity, tempVec1, h);
+      IntegrateQuatGlobal(obj.rotation, obj.angularVelocity, h);
 
-    const rotationMatrix = mat3.create();
-    mat3.fromQuat(rotationMatrix, obj.rotation);
-    const invertRotationMatrix = mat3.create();
-    mat3.invert(invertRotationMatrix, rotationMatrix);
-    const localForce = vec3.create();
-    vec3.transformMat3(localForce, force, invertRotationMatrix);
+      const dx = vec3.create();
+      vec3.sub(dx, obj.position, obj.prevPosition);
+      vec3.scale(obj.velocity, dx, 1 / h);
 
-    const localTorque = vec3.create();
-    vec3.cross(localTorque, obj.localAnchor, force);
+      const invQprev = quat.create();
+      quat.conjugate(invQprev, obj.prevRotation);
+      const dq = quat.create();
+      quat.multiply(dq, obj.rotation, invQprev);
+      quat.normalize(dq, dq);
 
-    const arm = vec3.create();
-    vec3.sub(arm, this.worldAttachmentPoint, obj.position);
-    const tempN = vec3.create(); //
-    vec3.scale(tempN, springObjectDirN, -1);
-    const tempCross1 = vec3.create();
-    vec3.cross(tempCross1, arm, tempN);
-    const invertWorldInertialTensor = obj.getWorldInvertInertialTensor();
-    const temp2 = vec3.create();
-    vec3.transformMat3(temp2, tempCross1, invertWorldInertialTensor);
-    const rotationalTemp = vec3.dot(tempCross1, temp2);
-    const invEffMass = 1 / obj.mass + rotationalTemp;
-
-    const acceleration = vec3.create();
-    vec3.scale(acceleration, force, invEffMass);
-    vec3.scaleAndAdd(obj.nextVelocity, obj.velocity, acceleration, dt);
-
-    const angularAcceleration = vec3.create();
-    vec3.transformMat3(
-      angularAcceleration,
-      localTorque,
-      obj.invertInertialTensor,
-    );
-    vec3.scaleAndAdd(
-      obj.nextAngularVelocity,
-      obj.angularVelocity,
-      angularAcceleration,
-      dt,
-    );
-
-    vec3.scaleAndAdd(obj.nextPosition, obj.position, obj.nextVelocity, dt);
-    IntegrateQuatLocal(obj.nextRotation, obj.nextAngularVelocity, dt);
+      const w = vec3.fromValues(
+        (2 * dq[0]) / h,
+        (2 * dq[1]) / h,
+        (2 * dq[2]) / h,
+      );
+      const sign = dq[3] >= 0 ? 1 : -1;
+      vec3.scale(w, w, sign);
+      vec3.copy(obj.angularVelocity, w);
+    }
   }
 
   draw() {
@@ -156,13 +134,15 @@ export default class Simulation1 {
     this.plane.draw();
     this.object.draw();
 
+    const spring = this.spring;
+
     this.p5Instance.line(
-      this.springAnchorPoint[0],
-      this.springAnchorPoint[1],
-      this.springAnchorPoint[2],
-      this.worldAttachmentPoint[0],
-      this.worldAttachmentPoint[1],
-      this.worldAttachmentPoint[2],
+      spring.anchorPos[0],
+      spring.anchorPos[1],
+      spring.anchorPos[2],
+      spring.attachmentPos[0],
+      spring.attachmentPos[1],
+      spring.attachmentPos[2],
     );
 
     const cameraParams = [
@@ -188,26 +168,6 @@ export default class Simulation1 {
     this.p5Instance.translate(
       -this.p5Instance.width / 2,
       -this.p5Instance.height / 2,
-    );
-
-    OutputValue(
-      "l0 = ",
-      this.springRestLength,
-      3,
-      20,
-      [10, 20],
-      [100, 30, 0],
-      this.p5Instance,
-    );
-
-    OutputValue(
-      "dl = ",
-      this.springCurrentLength,
-      3,
-      20,
-      [10, 50],
-      [100, 30, 0],
-      this.p5Instance,
     );
 
     this.p5Instance.pop();
