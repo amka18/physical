@@ -33,8 +33,8 @@ export default class Simulation1 {
       vec3.fromValues(0, 0, 0),
       vec3.fromValues(0, 0, 0),
       vec3.fromValues(0, 0, 0),
-      vec3.fromValues(20, 0, -20),
-      10,
+      vec3.fromValues(20, 0, 30),
+      5,
       vec3.fromValues(
         Math.floor(this.p5Instance.random(255)),
         Math.floor(this.p5Instance.random(255)),
@@ -49,8 +49,8 @@ export default class Simulation1 {
       vec3.fromValues(0, 0, 0),
       vec3.fromValues(0.0, 0, 0),
       vec3.fromValues(0, 0, 0),
-      vec3.fromValues(-20, 0, -20),
-      10,
+      vec3.fromValues(-20, 0, 30),
+      5,
       vec3.fromValues(
         Math.floor(this.p5Instance.random(255)),
         Math.floor(this.p5Instance.random(255)),
@@ -61,10 +61,10 @@ export default class Simulation1 {
 
     this.subStepCount = 10;
 
-    this.l0 = 150;
+    this.l0 = 200;
     this.r1 = vec3.create();
     this.r2 = vec3.create();
-    this.compliance = 1000;
+    this.compliance = 0.1;
     this.lambda = 0.0;
   }
 

@@ -1,17 +1,12 @@
 import SceneObject from "./scene_object.js";
-import Plane from "../../../common/plane.js";
+import Plane from "./plane.js";
 import Spring from "./spring.js";
 import {
-  IntegrateQuatGlobal,
-  IntegrateQuatLocal,
-} from "../../../common/integrators.js";
-import {
-  OutputVector,
-  OutputValue,
-  DrawLine,
-  DrawAxes,
-} from "../../../common/draw_utils.js";
-import { GetLength } from "../../../common/utils.js";
+  updateQuatGlobal,
+  updateQuatLocal,
+  calculateRotationEnergy,
+} from "./utils.js";
+import { OutputVector, OutputValue, DrawLine, DrawAxes } from "./draw_utils.js";
 
 const { mat3, mat4, vec3, quat } = glMatrix;
 
@@ -28,13 +23,13 @@ export default class Simulation1 {
   constructor(p5Instance) {
     this.p5Instance = p5Instance;
 
-    this.plane = new Plane(500, [50, 150, 50], p5Instance);
+    this.plane = new Plane(500, [50, 50, 50], p5Instance);
 
     this.spring = new Spring(
       vec3.fromValues(0.0, 40.0, 250.0),
-      0.0001,
       0.001,
-      205,
+      0.001,
+      180,
     );
 
     this.object = new SceneObject(
@@ -43,7 +38,7 @@ export default class Simulation1 {
       vec3.fromValues(0, 0, 0),
       vec3.fromValues(0, 0, 0),
       vec3.fromValues(0, 0, 0),
-      vec3.fromValues(10, 0, 40),
+      vec3.fromValues(1, 0, 40),
       10,
       vec3.fromValues(
         Math.floor(this.p5Instance.random(255)),
@@ -86,7 +81,7 @@ export default class Simulation1 {
 
       const f = vec3.create();
       if (vec3.length(f) < 0.001) {
-        vec3.set(f, 0,0, 0.0, 0.0);
+        vec3.set(f, 0, 0, 0.0, 0.0);
       }
       vec3.sub(f, fe, fd);
       const torque = vec3.create();
@@ -97,15 +92,12 @@ export default class Simulation1 {
       vec3.scaleAndAdd(obj.position, obj.position, obj.velocity, h);
 
       quat.copy(obj.prevRotation, obj.rotation);
-      const I = obj.getWorldInertialTensor();
-      const invI = mat3.create();
-      mat3.invert(invI, I);
-      const gero = obj.getGero();
+      const I = obj.getWI();
+      const invI = obj.getWInvI();
       const tempVec1 = vec3.create();
-      vec3.sub(tempVec1, torque, gero);
-      vec3.transformMat3(tempVec1, tempVec1, invI);
+      vec3.transformMat3(tempVec1, torque, invI);
       vec3.scaleAndAdd(obj.angularVelocity, obj.angularVelocity, tempVec1, h);
-      IntegrateQuatGlobal(obj.rotation, obj.angularVelocity, h);
+      updateQuatGlobal(obj.rotation, obj.angularVelocity, h);
 
       const dx = vec3.create();
       vec3.sub(dx, obj.position, obj.prevPosition);

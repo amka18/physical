@@ -13,6 +13,7 @@ export default class SceneObject {
   angularVelocity;
 
   inertialTensor;
+  invInertialTensor;
 
   mass;
 
@@ -118,15 +119,16 @@ export default class SceneObject {
     return wInvI;
   }
 
-  getGero() {
-    const gero = vec3.create();
-
-    const L = vec3.create();
-    // const Iw = this.getWorldInertialTensor();
-    // vec3.transformMat3(angularMomentum, this.angularVelocity, Iw);
-    // vec3.cross(gero, this.angularVelocity, angularMomentum);
-
-    return gero;
+  getWI() {
+    const rotMat = mat3.create();
+    mat3.fromQuat(rotMat, this.rotation);
+    const tRotMat = mat3.create();
+    mat3.transpose(tRotMat, rotMat);
+    const tempMat = mat3.create();
+    mat3.multiply(tempMat, rotMat, this.inertialTensor);
+    const wI = mat3.create();
+    mat3.multiply(wI, tempMat, tRotMat);
+    return wI;
   }
 
   getWorldAttachmentPoint() {
@@ -205,6 +207,9 @@ export default class SceneObject {
       0.0,
       Izz,
     );
+
+    this.invInertialTensor = mat3.create();
+    mat3.invert(this.invInertialTensor, this.inertialTensor);
   }
 
   /**

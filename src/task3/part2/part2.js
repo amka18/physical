@@ -2,6 +2,8 @@ import Simulation1 from "./simulation1.js";
 import Simulation2 from "./simulation2.js";
 import Simulation3 from "./simulation3.js";
 import Simulation4 from "./simulation4.js";
+import Simulation5 from "./simulation5.js";
+import Simulation6 from "./simulation6.js";
 
 class Timer {
   #timePoint = 0;
@@ -28,15 +30,15 @@ const sketch1 = (p5) => {
   let state = SimulationStates.RUN;
   let font;
   let button;
-  let canvas1;
+  let canvas;
 
   p5.preload = () => {
     font = p5.loadFont("font.ttf");
   };
 
   p5.setup = () => {
-    canvas1 = p5.createCanvas(400, 400, p5.WEBGL);
-    canvas1.parent('canvas1');
+    canvas = p5.createCanvas(400, 400, p5.WEBGL);
+    canvas.parent("canvas1");
 
     p5.textFont(font);
 
@@ -52,7 +54,7 @@ const sketch1 = (p5) => {
     timer.reset();
 
     if (state == SimulationStates.RUN) {
-      // simulation.update(dt);
+      simulation.update(dt);
     }
 
     p5.background(200);
@@ -66,21 +68,20 @@ const sketch2 = (p5) => {
   const timer = new Timer();
   let state = SimulationStates.RUN;
   let font;
-  let button;
+  let canvas;
 
   p5.preload = () => {
     font = p5.loadFont("font.ttf");
   };
 
   p5.setup = () => {
-    p5.createCanvas(400, 400, p5.WEBGL);
+    canvas = p5.createCanvas(400, 400, p5.WEBGL);
+    canvas.parent("canvas2");
+
     p5.textFont(font);
 
     simulation.setCamera();
     timer.reset();
-
-    button = p5.createButton("Нажми меня");
-    button.position(100, 1000);
   };
 
   p5.draw = () => {
@@ -88,7 +89,7 @@ const sketch2 = (p5) => {
     timer.reset();
 
     if (state == SimulationStates.RUN) {
-      // simulation.update(dt);
+      simulation.update(dt);
     }
 
     p5.background(200);
@@ -102,13 +103,16 @@ const sketch3 = (p5) => {
   const timer = new Timer();
   let state = SimulationStates.RUN;
   let font;
+  let canvas;
 
   p5.preload = () => {
     font = p5.loadFont("font.ttf");
   };
 
   p5.setup = () => {
-    p5.createCanvas(400, 400, p5.WEBGL);
+    canvas = p5.createCanvas(400, 400, p5.WEBGL);
+    canvas.parent("canvas3");
+
     p5.textFont(font);
 
     simulation.setCamera();
@@ -120,7 +124,7 @@ const sketch3 = (p5) => {
     timer.reset();
 
     if (state == SimulationStates.RUN) {
-      // simulation.update(dt);
+      simulation.update(dt);
     }
 
     p5.background(200);
@@ -134,13 +138,15 @@ const sketch4 = (p5) => {
   const timer = new Timer();
   let state = SimulationStates.RUN;
   let font;
+  let canvas;
 
   p5.preload = () => {
     font = p5.loadFont("font.ttf");
   };
 
   p5.setup = () => {
-    p5.createCanvas(400, 400, p5.WEBGL);
+    canvas = p5.createCanvas(400, 400, p5.WEBGL);
+    canvas.parent("canvas4");
     p5.textFont(font);
 
     simulation.setCamera();
@@ -160,3 +166,71 @@ const sketch4 = (p5) => {
   };
 };
 new p5(sketch4);
+
+const sketch5 = (p5) => {
+  const simulation = new Simulation5(p5);
+  const timer = new Timer();
+  let state = SimulationStates.RUN;
+  let font;
+  let canvas;
+
+  p5.preload = () => {
+    font = p5.loadFont("font.ttf");
+  };
+
+  p5.setup = () => {
+    canvas = p5.createCanvas(400, 400, p5.WEBGL);
+    canvas.parent("canvas5");
+    p5.textFont(font);
+
+    simulation.setCamera();
+    timer.reset();
+  };
+
+  p5.draw = () => {
+    const dt = timer.getTime();
+    timer.reset();
+
+    if (state == SimulationStates.RUN) {
+      simulation.update(dt);
+    }
+
+    p5.background(200);
+    simulation.draw();
+  };
+};
+new p5(sketch5);
+
+const sketch6 = (p5) => {
+  const simulation = new Simulation6(p5);
+  const timer = new Timer();
+  let state = SimulationStates.RUN;
+  let font;
+  let canvas;
+
+  p5.preload = () => {
+    font = p5.loadFont("font.ttf");
+  };
+
+  p5.setup = () => {
+    canvas = p5.createCanvas(400, 400, p5.WEBGL);
+    canvas.parent("canvas6");
+    p5.textFont(font);
+
+    simulation.setCamera();
+    timer.reset();
+  };
+
+  p5.draw = () => {
+    const dt = timer.getTime();
+    timer.reset();
+
+    if (state == SimulationStates.RUN) {
+      simulation.update(dt);
+    }
+
+    p5.background(200);
+    simulation.draw();
+  };
+};
+new p5(sketch6);

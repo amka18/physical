@@ -149,11 +149,20 @@ export default class Simulation1 {
     const invEffMass2 = this.XPBDCalculateEffMass(object2.mass, r2, n, wInvI2);
 
     //
-    const b = 0.01;
+    const zeta = 1.0;
+    const hertz = 5.0;
+    const omega = 2.0 * Math.PI * hertz;
+    const a1 = 2.0 * zeta + omega * h;
+    const a2 = h * omega * a1;
+    const a3 = 1.0 / (1.0 + a2);
+    const biasRate = omega / a1;
+    const massCoeff = a2 * a3;
+    const impulseCoeff = a3;
 
     //
     const incrementalImpulse =
-      (-dc - (b * c) / h) / (invEffMass1 + invEffMass2);
+      (-massCoeff * (dc + biasRate * c)) / (invEffMass1 + invEffMass2) -
+      impulseCoeff * this.accumulatedImpulse;
 
     const newAccumulatedImpulse = Math.max(
       0.0,
