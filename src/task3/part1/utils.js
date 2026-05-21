@@ -33,5 +33,5 @@ export function updateQuatLocal(q, w, dt) {
 export function calculateRotationEnergy(I, w) {
   const L = vec3.create();
   vec3.transformMat3(L, w, I);
-  return vec3.dot(L, w);
+  return vec3.dot(L, w) * 0.5;
 }

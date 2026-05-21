@@ -122,9 +122,9 @@ export default class Simulation1 {
       this.p5Instance,
     );
 
-    OutputValue("E", this.Ek, 4, 16, [10, 60], [10, 10, 10], this.p5Instance);
-
     OutputVector("L", this.wL, 4, 16, [10, 40], [10, 10, 10], this.p5Instance);
+
+    OutputValue("E", this.Ek, 4, 16, [10, 60], [10, 10, 10], this.p5Instance);
 
     this.p5Instance.pop();
 

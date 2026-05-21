@@ -1,14 +1,10 @@
-import SimulationObject from "../../common/simulation_object.js";
+import SceneObject from "./scene_object.js";
 import {
-  IntegrateQuatGlobal,
-  IntegrateQuatLocal,
-} from "../../common/integrators.js";
-import {
-  OutputVector,
-  OutputValue,
-  DrawLine,
-  DrawAxes,
-} from "../../common/draw_utils.js";
+  updateQuatGlobal,
+  updateQuatLocal,
+  calculateRotationEnergy,
+} from "./utils.js";
+import { OutputVector, OutputValue, DrawLine, DrawAxes } from "./draw_utils.js";
 
 const { mat3, mat4, vec3, quat } = glMatrix;
 
@@ -16,25 +12,23 @@ export default class Simulation2 {
   object;
   camera;
 
-  initialAngularMomentum;
+  L0;
+  L;
+  Ek;
 
   p5Instance;
 
   constructor(p5Instance) {
     this.p5Instance = p5Instance;
 
-    this.object = new SimulationObject(
-      vec3.fromValues(100, 50, 30),
-      vec3.fromValues(0.0, 0.0, 0.0),
-      vec3.fromValues(0.0, 0.0, 0.0),
-      vec3.fromValues(1.0, 1.0, 1.0),
-      vec3.fromValues(0.0, 0.0, 0.0),
-      vec3.fromValues(
-        this.p5Instance.random(0.002, 0.003),
-        this.p5Instance.random(0.002, 0.003),
-        this.p5Instance.random(0.002, 0.003),
-      ),
-      80,
+    this.object = new SceneObject(
+      [20, 30, 60],
+      vec3.fromValues(0, 0, 0),
+      vec3.fromValues(0, 0, 0),
+      vec3.fromValues(0, 0, 0),
+      vec3.fromValues(0.001, 0.01, 0.001),
+      vec3.fromValues(20, 0, -20),
+      5,
       vec3.fromValues(
         Math.floor(this.p5Instance.random(255)),
         Math.floor(this.p5Instance.random(255)),
@@ -43,7 +37,14 @@ export default class Simulation2 {
       p5Instance,
     );
 
-    this.initialAngularMomentum = vec3.clone(this.object.angularMomentum);
+    const obj = this.object;
+
+    this.L0 = vec3.create();
+    vec3.transformMat3(this.L0, obj.angularVelocity, obj.inertialTensor);
+
+    this.L = vec3.clone(this.L0);
+
+    this.Ek = calculateRotationEnergy(obj.inertialTensor, obj.angularVelocity);
   }
 
   setCamera() {
@@ -52,40 +53,32 @@ export default class Simulation2 {
   }
 
   update(dt) {
-    vec3.transformMat3(
-      this.object.angularVelocity,
-      this.initialAngularMomentum,
-      this.object.invertInertialTensor,
-    );
+    const obj = this.object;
 
-    IntegrateQuatLocal(
-      this.object.nextRotation,
-      this.object.nextAngularVelocity,
-      dt,
-    );
+    vec3.transformMat3(obj.angularVelocity, this.L0, obj.invInertialTensor);
 
-    this.object.updateAngularMomentum();
+    updateQuatLocal(obj.rotation, obj.angularVelocity, dt);
+
+    vec3.transformMat3(this.L, obj.angularVelocity, obj.inertialTensor);
+    this.Ek = calculateRotationEnergy(obj.inertialTensor, obj.angularVelocity);
   }
 
   draw() {
     this.p5Instance.orbitControl();
 
-    this.object.draw();
+    const obj = this.object;
+
+    obj.draw();
 
     DrawLine(
-      this.initialAngularMomentum,
+      this.L0,
       vec3.fromValues(0.0, 0.0, 0.0),
       200,
       vec3.fromValues(180, 50, 50),
       this.p5Instance,
     );
 
-    DrawAxes(
-      this.object.position,
-      this.object.nextRotation,
-      100,
-      this.p5Instance,
-    );
+    DrawAxes(obj.position, obj.rotation, 100, this.p5Instance);
 
     const cameraParams = [
       this.camera.eyeX,
@@ -112,25 +105,11 @@ export default class Simulation2 {
       -this.p5Instance.height / 2,
     );
 
-    OutputVector(
-      "init",
-      this.initialAngularMomentum,
-      4,
-      16,
-      [10, 20],
-      [10, 10, 10],
-      this.p5Instance,
-    );
+    OutputVector("L0", this.L0, 4, 16, [10, 20], [10, 10, 10], this.p5Instance);
 
-    OutputVector(
-      "current",
-      this.object.angularMomentum,
-      4,
-      16,
-      [10, 40],
-      [10, 10, 10],
-      this.p5Instance,
-    );
+    OutputVector("L", this.L, 4, 16, [10, 40], [10, 10, 10], this.p5Instance);
+
+    OutputValue("E", this.Ek, 4, 16, [10, 60], [10, 10, 10], this.p5Instance);
 
     this.p5Instance.pop();
 

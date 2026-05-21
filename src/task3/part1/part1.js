@@ -63,13 +63,16 @@ const sketch2 = (p5) => {
   const timer = new Timer();
   let state = SimulationStates.RUN;
   let font;
+  let canvas;
 
   p5.preload = () => {
     font = p5.loadFont("font.ttf");
   };
 
   p5.setup = () => {
-    p5.createCanvas(400, 400, p5.WEBGL);
+    canvas = p5.createCanvas(400, 400, p5.WEBGL);
+    canvas.parent("canvas2");
+
     p5.textFont(font);
 
     simulation.setCamera();
@@ -96,13 +99,16 @@ const sketch3 = (p5) => {
   const timer = new Timer();
   let state = SimulationStates.RUN;
   let font;
+  let canvas;
 
   p5.preload = () => {
     font = p5.loadFont("font.ttf");
   };
 
   p5.setup = () => {
-    p5.createCanvas(400, 400, p5.WEBGL);
+    canvas = p5.createCanvas(400, 400, p5.WEBGL);
+    canvas.parent("canvas3");
+
     p5.textFont(font);
 
     simulation.setCamera();
@@ -129,13 +135,16 @@ const sketch4 = (p5) => {
   const timer = new Timer();
   let state = SimulationStates.RUN;
   let font;
+  let canvas;
 
   p5.preload = () => {
     font = p5.loadFont("font.ttf");
   };
 
   p5.setup = () => {
-    p5.createCanvas(400, 400, p5.WEBGL);
+    canvas = p5.createCanvas(400, 400, p5.WEBGL);
+    canvas.parent("canvas4");
+
     p5.textFont(font);
 
     simulation.setCamera();
