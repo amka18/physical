@@ -1,4 +1,4 @@
-import SimulationObject from "../../../common/simulation_object.js";
+import SimulationObject from "../../common/simulation_object.js";
 import {
   IntegrateQuatGlobal,
   IntegrateQuatLocal,

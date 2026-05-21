@@ -1,16 +1,16 @@
-import SimulationObject from "../../../common/simulation_object.js";
-import Plane from "../../../common/plane.js";
+import SimulationObject from "../../common/simulation_object.js";
+import Plane from "../../common/plane.js";
 import {
   IntegrateQuatGlobal,
   IntegrateQuatLocal,
-} from "../../../common/integrators.js";
+} from "../../common/integrators.js";
 import {
   OutputVector,
   OutputValue,
   DrawLine,
   DrawAxes,
-} from "../../../common/draw_utils.js";
-import { GetLength } from "../../../common/utils.js";
+} from "../../common/draw_utils.js";
+import { GetLength } from "../../common/utils.js";
 
 const { mat3, mat4, vec3, quat } = glMatrix;
 

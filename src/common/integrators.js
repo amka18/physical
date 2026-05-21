@@ -37,6 +37,7 @@ export function IntegrateQuatLocal(nextRotation, localAngularVelocity, dt) {
   );
 
   const dQuat = quat.create();
+  // quat.multiply(dQuat, nextRotation, wQuat);
   quat.multiply(dQuat, nextRotation, wQuat);
   quat.scale(dQuat, dQuat, 0.5 * dt);
 

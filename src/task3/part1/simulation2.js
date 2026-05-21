@@ -1,23 +1,22 @@
-import SimulationObject from "../../../common/simulation_object.js";
+import SimulationObject from "../../common/simulation_object.js";
 import {
   IntegrateQuatGlobal,
   IntegrateQuatLocal,
-} from "../../../common/integrators.js";
+} from "../../common/integrators.js";
 import {
   OutputVector,
   OutputValue,
   DrawLine,
   DrawAxes,
-} from "../../../common/draw_utils.js";
+} from "../../common/draw_utils.js";
 
 const { mat3, mat4, vec3, quat } = glMatrix;
 
-export default class Simulation1 {
+export default class Simulation2 {
   object;
   camera;
 
-  worldInitialAngularMomentum;
-  worldCurrentAngularMomentum;
+  initialAngularMomentum;
 
   p5Instance;
 
@@ -30,7 +29,11 @@ export default class Simulation1 {
       vec3.fromValues(0.0, 0.0, 0.0),
       vec3.fromValues(1.0, 1.0, 1.0),
       vec3.fromValues(0.0, 0.0, 0.0),
-      vec3.fromValues(0.0, 0.0, 0.0),
+      vec3.fromValues(
+        this.p5Instance.random(0.002, 0.003),
+        this.p5Instance.random(0.002, 0.003),
+        this.p5Instance.random(0.002, 0.003),
+      ),
       80,
       vec3.fromValues(
         Math.floor(this.p5Instance.random(255)),
@@ -40,22 +43,7 @@ export default class Simulation1 {
       p5Instance,
     );
 
-    const worldAngularVelocity = vec3.fromValues(
-      this.p5Instance.random(0.002, 0.003),
-      this.p5Instance.random(0.002, 0.003),
-      this.p5Instance.random(0.002, 0.003),
-    );
-
-    const worldInertialTensor = this.object.getWorldInertialTensor();
-
-    this.worldInitialAngularMomentum = vec3.create();
-    vec3.transformMat3(
-      this.worldInitialAngularMomentum,
-      worldAngularVelocity,
-      worldInertialTensor,
-    );
-
-    this.worldCurrentAngularMomentum = vec3.create();
+    this.initialAngularMomentum = vec3.clone(this.object.angularMomentum);
   }
 
   setCamera() {
@@ -64,26 +52,19 @@ export default class Simulation1 {
   }
 
   update(dt) {
-    const obj = this.object;
-
-    const worldInertialTensor = obj.getWorldInertialTensor();
-
-    const invertWorldInertialTensor = obj.getWorldInvertInertialTensor();
-
-    const newWorldAngularVelocity = vec3.create();
     vec3.transformMat3(
-      newWorldAngularVelocity,
-      this.worldInitialAngularMomentum,
-      invertWorldInertialTensor,
+      this.object.angularVelocity,
+      this.initialAngularMomentum,
+      this.object.invertInertialTensor,
     );
 
-    IntegrateQuatGlobal(obj.nextRotation, newWorldAngularVelocity, dt);
-
-    vec3.transformMat3(
-      this.worldCurrentAngularMomentum,
-      newWorldAngularVelocity,
-      worldInertialTensor,
+    IntegrateQuatLocal(
+      this.object.nextRotation,
+      this.object.nextAngularVelocity,
+      dt,
     );
+
+    this.object.updateAngularMomentum();
   }
 
   draw() {
@@ -92,7 +73,7 @@ export default class Simulation1 {
     this.object.draw();
 
     DrawLine(
-      this.worldInitialAngularMomentum,
+      this.initialAngularMomentum,
       vec3.fromValues(0.0, 0.0, 0.0),
       200,
       vec3.fromValues(180, 50, 50),
@@ -133,7 +114,7 @@ export default class Simulation1 {
 
     OutputVector(
       "init",
-      this.worldInitialAngularMomentum,
+      this.initialAngularMomentum,
       4,
       16,
       [10, 20],
@@ -143,7 +124,7 @@ export default class Simulation1 {
 
     OutputVector(
       "current",
-      this.worldCurrentAngularMomentum,
+      this.object.angularMomentum,
       4,
       16,
       [10, 40],

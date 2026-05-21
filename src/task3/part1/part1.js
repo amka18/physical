@@ -27,13 +27,16 @@ const sketch1 = (p5) => {
   const timer = new Timer();
   let state = SimulationStates.RUN;
   let font;
+  let canvas;
 
   p5.preload = () => {
     font = p5.loadFont("font.ttf");
   };
 
   p5.setup = () => {
-    p5.createCanvas(400, 400, p5.WEBGL);
+    canvas = p5.createCanvas(400, 400, p5.WEBGL);
+    canvas.parent("canvas1");
+
     p5.textFont(font);
 
     simulation.setCamera();

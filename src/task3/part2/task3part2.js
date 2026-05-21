@@ -27,17 +27,24 @@ const sketch1 = (p5) => {
   const timer = new Timer();
   let state = SimulationStates.RUN;
   let font;
+  let button;
+  let canvas1;
 
   p5.preload = () => {
     font = p5.loadFont("font.ttf");
   };
 
   p5.setup = () => {
-    p5.createCanvas(400, 400, p5.WEBGL);
+    canvas1 = p5.createCanvas(400, 400, p5.WEBGL);
+    canvas1.parent('canvas1');
+
     p5.textFont(font);
 
     simulation.setCamera();
     timer.reset();
+
+    button = p5.createButton("Нажми меня");
+    button.position(10, 10);
   };
 
   p5.draw = () => {
@@ -59,6 +66,7 @@ const sketch2 = (p5) => {
   const timer = new Timer();
   let state = SimulationStates.RUN;
   let font;
+  let button;
 
   p5.preload = () => {
     font = p5.loadFont("font.ttf");
@@ -70,6 +78,9 @@ const sketch2 = (p5) => {
 
     simulation.setCamera();
     timer.reset();
+
+    button = p5.createButton("Нажми меня");
+    button.position(100, 1000);
   };
 
   p5.draw = () => {

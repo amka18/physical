@@ -140,7 +140,7 @@ export default class Simulation1 {
       vec3.dot(n, predV2) +
       vec3.dot(crossR2N, predW2);
 
-    const b = c * 0.01/h;
+    const b = c * 0.1/h;
 
     const wInvI1 = object1.getWInvI();
     const effMass1 = this.XPBDCalculateEffMass(object1.mass, r1, n, wInvI1);
