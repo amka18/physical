@@ -8,12 +8,15 @@ import {
 } from "./utils.js";
 import { OutputVector, OutputValue, DrawLine, DrawAxes } from "./draw_utils.js";
 
+import {} from "./xpbd.js";
+import {} from "./collision.js";
+
 const { mat3, mat4, vec3, quat } = glMatrix;
 
 export default class Simulation1 {
   plane;
-  spring;
-  object;
+
+  objects;
 
   subStepCount;
 
