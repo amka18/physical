@@ -47,28 +47,6 @@ export default class Simulation4 {
     );
 
     this.Ek = 0.0;
-
-    // this.object = new SimulationObject(
-    //   vec3.fromValues(100, 50, 30),
-    //   vec3.fromValues(0.0, 0.0, 0.0),
-    //   vec3.fromValues(0.0, 0.0, 0.0),
-    //   vec3.fromValues(1.0, 1.0, 1.0),
-    //   vec3.fromValues(0.0, 0.0, 0.0),
-    //   vec3.fromValues(
-    //     this.p5Instance.random(0.001, 0.003),
-    //     this.p5Instance.random(0.001, 0.003),
-    //     this.p5Instance.random(0.001, 0.003),
-    //   ),
-    //   80,
-    //   vec3.fromValues(
-    //     Math.floor(this.p5Instance.random(255)),
-    //     Math.floor(this.p5Instance.random(255)),
-    //     Math.floor(this.p5Instance.random(255)),
-    //   ),
-    //   p5Instance,
-    // );
-
-    // this.initialAngularMomentum = vec3.clone(this.object.angularMomentum);
   }
 
   setCamera() {
@@ -165,39 +143,6 @@ export default class Simulation4 {
     obj.rotation[3] = obj.rotation[3] + 0.5 * dq[3] * dt;
 
     quat.normalize(obj.rotation, obj.rotation);
-
-    // vec3.copy(this.object.angularVelocity, this.object.nextAngularVelocity);
-    // const ω = this.object.nextAngularVelocity;
-
-    // this.object.updateAngularMomentum();
-
-    // const gyro = this.object.getGyro();
-
-    // const skewOmega = this.getSkewMatrix(
-    //   vec3.clone(this.object.nextAngularVelocity),
-    // );
-
-    // const skewL = this.getSkewMatrix(vec3.clone(this.object.angularMomentum));
-    // const skewOmegaTimesI = mat3.create();
-    // mat3.multiply(skewOmegaTimesI, skewOmega, this.object.inertialTensor);
-
-    // const jacobiCore = mat3.create();
-    // mat3.subtract(jacobiCore, skewOmegaTimesI, skewL);
-
-    // mat3.multiplyScalar(jacobiCore, jacobiCore, dt);
-
-    // const jacobi = mat3.create();
-    // mat3.add(jacobi, this.object.inertialTensor, jacobiCore);
-
-    // const jacobiInv = mat3.create();
-    // mat3.invert(jacobiInv, jacobi);
-    // const correction = vec3.create();
-    // vec3.transformMat3(correction, gyro, jacobiInv);
-    // vec3.scale(correction, correction, dt);
-    // vec3.add(this.object.nextAngularVelocity, ω, correction);
-
-    // this.object.updateAngularMomentum();
-    // IntegrateQuatLocal(obj.rotation, obj.angularVelocity, dt);
   }
 
   draw() {
