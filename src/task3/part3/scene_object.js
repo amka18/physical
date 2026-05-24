@@ -10,14 +10,15 @@ export default class SceneObject {
   scale;
 
   velocity;
+  prevVelocity;
+
   angularVelocity;
+  prevAngularVelocity;
 
   inertialTensor;
   invInertialTensor;
 
   mass;
-
-  attachmentPoint;
 
   worldVertices;
 
@@ -26,6 +27,7 @@ export default class SceneObject {
   faceIndices;
 
   color;
+  dimensions;
 
   p5Instance;
 
@@ -47,11 +49,14 @@ export default class SceneObject {
     rotation,
     velocity,
     angularVelocity,
-    attachmentPoint,
     mass,
     color,
     p5Instance,
   ) {
+    this.dimensions = dimensions
+      ? vec3.clone(dimensions)
+      : vec3.fromValues(100, 100, 100);
+
     this.position = position ? vec3.clone(position) : vec3.create();
     this.prevPosition = vec3.clone(this.position);
 
@@ -66,14 +71,12 @@ export default class SceneObject {
     this.velocity = velocity
       ? vec3.clone(velocity)
       : vec3.fromValues(0.0, 0.0, 0.0);
+    this.prevVelocity = vec3.clone(this.velocity);
 
     this.angularVelocity = angularVelocity
       ? vec3.clone(angularVelocity)
       : vec3.fromValues(0.0, 0.0, 0.0);
-
-    this.attachmentPoint = attachmentPoint
-      ? vec3.clone(attachmentPoint)
-      : vec3.fromValues(0.0, 0.0, 0.0);
+    this.prevAngularVelocity = vec3.clone(this.angularVelocity);
 
     this.mass = mass;
 
@@ -131,25 +134,49 @@ export default class SceneObject {
     return wI;
   }
 
-  getWorldAttachmentPoint() {
-    const lr = vec3.clone(this.attachmentPoint);
+  getWVerts() {
+    const modelMatrix = mat4.create();
 
-    const rotMat = mat3.create();
-    mat3.fromQuat(rotMat, this.rotation);
+    // const
 
-    const wr = vec3.create();
-    vec3.transformMat3(wr, lr, rotMat);
+    mat4.fromRotationTranslationScale(
+      modelMatrix,
+      this.rotation,
+      this.position,
+      this.scale,
+    );
 
-    wr[0] = wr[0] + this.position[0];
-    wr[1] = wr[1] + this.position[1];
-    wr[2] = wr[2] + this.position[2];
+    const wVerts = [];
+    for (let vertInd = 0; vertInd < this.localVertices.length; vertInd++) {
+      const localVert = this.localVertices[vertInd];
 
-    return wr;
+      const worldVert = vec4.fromValues(
+        localVert[0],
+        localVert[1],
+        localVert[2],
+        1.0,
+      );
+
+      vec4.transformMat4(worldVert, worldVert, modelMatrix);
+      wVerts.push(vec3.fromValues(worldVert[0], worldVert[1], worldVert[2]));
+    }
+
+    return wVerts;
   }
 
-  /**
-   * Отрисовка объекта
-   */
+  getModelMatrix() {
+    const modelMatrix = mat4.create();
+
+    mat4.fromRotationTranslationScale(
+      modelMatrix,
+      this.rotation,
+      this.position,
+      this.scale,
+    );
+
+    return modelMatrix;
+  }
+
   draw() {
     this.#updateWorldVertices();
 
@@ -184,13 +211,6 @@ export default class SceneObject {
     this.p5Instance.pop();
   }
 
-  /**
-   * Инициализация тензора инерции
-   * @param {number} width - ширина
-   * @param {number} height - высота
-   * @param {number} depth - глубина
-   * @param {number} mass - масса
-   */
   #initializeInertialTensor(width, height, depth, mass) {
     const Ixx = (mass / 12.0) * (height ** 2 + depth ** 2);
     const Iyy = (mass / 12.0) * (width ** 2 + depth ** 2);
@@ -212,12 +232,6 @@ export default class SceneObject {
     mat3.invert(this.invInertialTensor, this.inertialTensor);
   }
 
-  /**
-   * Инициализация вершин куба
-   * @param {number} width - ширина
-   * @param {number} height - высота
-   * @param {number} depth - глубина
-   */
   #initializeVertices(width, height, depth) {
     const a = width / 2.0;
     const b = height / 2.0;
@@ -267,9 +281,6 @@ export default class SceneObject {
     this.worldVertices = this.localVertices.map((vert) => vec3.clone(vert));
   }
 
-  /**
-   * Обновление мировых координат вершин
-   */
   #updateWorldVertices() {
     const modelMatrix = mat4.create();
 
