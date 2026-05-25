@@ -6,7 +6,11 @@ import {
   XPBD_SolveGroundCollision,
   XPBD_SolveObjectsCollision,
 } from "./xpbd.js";
-import { detectGroundCollision, detectObjectCollision } from "./collision.js";
+import {
+  detectGroundCollision,
+  detectObjectCollision,
+  detectObjectCollisionSpatialGrid,
+} from "./collision.js";
 
 const { mat3, mat4, vec3, quat } = glMatrix;
 
@@ -31,7 +35,7 @@ export default class Simulation3 {
 
     this.objects = [];
 
-    const gridSize = 4;
+    const gridSize = 5;
     const objectSize = 10;
     const spacing = 20;
     const offset = ((gridSize - 1) * spacing) / 2;
@@ -71,7 +75,7 @@ export default class Simulation3 {
     this.collisionContacts = [];
     this.groundContacts = [];
 
-    this.subStepCount = 10;
+    this.subStepCount = 5;
     this.collisionIterCount = 5;
   }
 
@@ -83,46 +87,46 @@ export default class Simulation3 {
 
   detectCollisions() {
     detectGroundCollision(this.objects, this.groundContacts);
-    detectObjectCollision(this.objects, this.collisionContacts);
+    detectObjectCollisionSpatialGrid(this.objects, this.collisionContacts);
   }
 
   update(dt) {
     const h = dt / this.subStepCount;
 
-    // for (let i = 0; i < this.subStepCount; i++) {
-    //   for (const obj of this.objects) {
-    //     XPBD_PredictPositions(obj, h);
-    //   }
+    for (let i = 0; i < this.subStepCount; i++) {
+      for (const obj of this.objects) {
+        XPBD_PredictPositions(obj, h);
+      }
 
-    // this.detectCollisions();
+      this.detectCollisions();
 
-    // for (const groungContact of this.groundContacts) {
-    //   XPBD_SolveGroundCollision(
-    //     groungContact.object,
-    //     groungContact.contactVert,
-    //     groungContact.penetration,
-    //     groungContact.lambda,
-    //     h,
-    //   );
-    // }
+      for (const groungContact of this.groundContacts) {
+        XPBD_SolveGroundCollision(
+          groungContact.object,
+          groungContact.contactVert,
+          groungContact.penetration,
+          groungContact.lambda,
+          h,
+        );
+      }
 
-    // for (const collisionContact of this.collisionContacts) {
-    //   XPBD_SolveObjectsCollision(
-    //     collisionContact.object1,
-    //     collisionContact.object2,
-    //     collisionContact.contactVert1,
-    //     collisionContact.contactVert2,
-    //     collisionContact.normal,
-    //     collisionContact.penetration,
-    //     collisionContact.lambda,
-    //     h,
-    //   );
-    // }
+      for (const collisionContact of this.collisionContacts) {
+        XPBD_SolveObjectsCollision(
+          collisionContact.object1,
+          collisionContact.object2,
+          collisionContact.contactVert1,
+          collisionContact.contactVert2,
+          collisionContact.normal,
+          collisionContact.penetration,
+          collisionContact.lambda,
+          h,
+        );
+      }
 
-    // for (const obj of this.objects) {
-    //   XPBD_UpdateVelocities(obj, h);
-    // }
-    // }
+      for (const obj of this.objects) {
+        XPBD_UpdateVelocities(obj, h);
+      }
+    }
   }
 
   draw() {

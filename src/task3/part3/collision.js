@@ -215,3 +215,90 @@ function SAT_detectObjectCollision(object1, object2, collisionContacts) {
 
   return contacts;
 }
+
+export function detectObjectCollisionSpatialGrid(objects, collisionContacts) {
+  collisionContacts.length = 0;
+  if (objects.length < 2) return;
+
+  const min = vec3.create();
+  const max = vec3.create();
+  const first = objects[0];
+  const halfFirst = vec3.create();
+  vec3.scale(halfFirst, first.dimensions, 0.5);
+  vec3.sub(min, first.position, halfFirst);
+  vec3.add(max, first.position, halfFirst);
+
+  for (let i = 1; i < objects.length; i++) {
+    const obj = objects[i];
+    const half = vec3.scale(vec3.create(), obj.dimensions, 0.5);
+    const objMin = vec3.sub(vec3.create(), obj.position, half);
+    const objMax = vec3.add(vec3.create(), obj.position, half);
+    vec3.min(min, min, objMin);
+    vec3.max(max, max, objMax);
+  }
+
+  let maxExtent = 0;
+  for (const obj of objects) {
+    const extent = Math.max(
+      obj.dimensions[0],
+      obj.dimensions[1],
+      obj.dimensions[2],
+    );
+    if (extent > maxExtent) maxExtent = extent;
+  }
+  const cellSize = maxExtent;
+  if (cellSize <= 0) return;
+
+  const grid = new Map();
+
+  for (let i = 0; i < objects.length; i++) {
+    const obj = objects[i];
+    const half = vec3.scale(vec3.create(), obj.dimensions, 0.5);
+    const objMin = vec3.sub(vec3.create(), obj.position, half);
+    const objMax = vec3.add(vec3.create(), obj.position, half);
+
+    const ixMin = Math.floor((objMin[0] - min[0]) / cellSize);
+    const iyMin = Math.floor((objMin[1] - min[1]) / cellSize);
+    const izMin = Math.floor((objMin[2] - min[2]) / cellSize);
+    const ixMax = Math.floor((objMax[0] - min[0]) / cellSize);
+    const iyMax = Math.floor((objMax[1] - min[1]) / cellSize);
+    const izMax = Math.floor((objMax[2] - min[2]) / cellSize);
+
+    for (let ix = ixMin; ix <= ixMax; ix++) {
+      for (let iy = iyMin; iy <= iyMax; iy++) {
+        for (let iz = izMin; iz <= izMax; iz++) {
+          const key = `${ix},${iy},${iz}`;
+          let cell = grid.get(key);
+          if (!cell) {
+            cell = [];
+            grid.set(key, cell);
+          }
+          cell.push(i);
+        }
+      }
+    }
+  }
+
+  const processedPairs = new Set();
+
+  for (const cell of grid.values()) {
+    if (cell.length < 2) continue;
+    for (let a = 0; a < cell.length; a++) {
+      const idxA = cell[a];
+      for (let b = a + 1; b < cell.length; b++) {
+        const idxB = cell[b];
+        const pairKey = idxA < idxB ? `${idxA},${idxB}` : `${idxB},${idxA}`;
+        if (processedPairs.has(pairKey)) continue;
+        processedPairs.add(pairKey);
+
+        const contacts = SAT_detectObjectCollision(
+          objects[idxA],
+          objects[idxB],
+        );
+        for (const contact of contacts) {
+          collisionContacts.push(contact);
+        }
+      }
+    }
+  }
+}

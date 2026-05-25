@@ -30,9 +30,9 @@ export function SI_PredictVelocities(object, h) {
   const dw = vec3.create();
   vec3.transformMat3(dw, dwl, rotMat);
 
-  object.angularVelocity[0] = object.angularVelocity[0]; //+ dw[0];
-  object.angularVelocity[0] = object.angularVelocity[1]; // dw[1];
-  object.angularVelocity[0] = object.angularVelocity[2]; // dw[2];
+  object.angularVelocity[0] = object.angularVelocity[0] + dw[0];
+  object.angularVelocity[0] = object.angularVelocity[1] + dw[1];
+  object.angularVelocity[0] = object.angularVelocity[2] + dw[2];
 }
 
 export function SI_SolveGroundCollision(

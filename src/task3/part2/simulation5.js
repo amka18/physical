@@ -103,9 +103,6 @@ export default class Simulation1 {
     );
 
     this.si(obj1, obj2, dt, predV1, predW1, predV2, predW2);
-
-    this.integr(obj1, dt);
-    this.integr(obj2, dt);
   }
 
   si(object1, object2, h, predV1, predW1, predV2, predW2) {
@@ -143,62 +140,50 @@ export default class Simulation1 {
       vec3.dot(crossR2N, predW2);
 
     const wInvI1 = object1.getWInvI();
-    const invEffMass1 = this.XPBDCalculateEffMass(object1.mass, r1, n, wInvI1);
+    const invEffMass1 = this.calculateEffMass(object1.mass, r1, n, wInvI1);
 
     const wInvI2 = object2.getWInvI();
-    const invEffMass2 = this.XPBDCalculateEffMass(object2.mass, r2, n, wInvI2);
+    const invEffMass2 = this.calculateEffMass(object2.mass, r2, n, wInvI2);
 
-    //
-    const b = 0.01;
+    const appliedDelta = (-c / (invEffMass1 + invEffMass2)) * 0.01;
 
-    //
-    const incrementalImpulse =
-      (-dc - (b * c) / h) / (invEffMass1 + invEffMass2);
+    object1.position[0] -= (appliedDelta / object1.mass) * n[0];
+    object1.position[1] -= (appliedDelta / object1.mass) * n[1];
+    object1.position[2] -= (appliedDelta / object1.mass) * n[2];
 
-    const newAccumulatedImpulse = Math.max(
-      0.0,
-      this.accumulatedImpulse + incrementalImpulse,
-    );
-    const appliedImpulse = newAccumulatedImpulse - this.accumulatedImpulse;
-    this.accumulatedImpulse = newAccumulatedImpulse;
+    object2.position[0] += (appliedDelta / object2.mass) * n[0];
+    object2.position[1] += (appliedDelta / object2.mass) * n[1];
+    object2.position[2] += (appliedDelta / object2.mass) * n[2];
 
-    //
-    const impulse = vec3.create();
-    vec3.scale(impulse, n, appliedImpulse);
+    const angCorr1 = vec3.create();
+    vec3.transformMat3(angCorr1, crossR1N, object1.getWInvI());
+    vec3.scale(angCorr1, angCorr1, -appliedDelta);
+    if (vec3.length(angCorr1) > 1e-12) {
+      const halfAngle = vec3.scale(vec3.create(), angCorr1, 0.5);
+      const rotQ1 = quat.create();
+      quat.setAxisAngle(
+        rotQ1,
+        vec3.normalize(vec3.create(), halfAngle),
+        vec3.length(angCorr1),
+      );
+      quat.multiply(object1.rotation, rotQ1, object1.rotation);
+      quat.normalize(object1.rotation, object1.rotation);
+    }
 
-    predV1[0] = predV1[0] - impulse[0] / object1.mass;
-    predV1[1] = predV1[1] - impulse[1] / object1.mass;
-    predV1[2] = predV1[2] - impulse[2] / object1.mass;
-
-    predV2[0] = predV2[0] + impulse[0] / object2.mass;
-    predV2[1] = predV2[1] + impulse[1] / object2.mass;
-    predV2[2] = predV2[2] + impulse[2] / object2.mass;
-
-    vec3.copy(object1.velocity, predV1);
-    vec3.copy(object2.velocity, predV2);
-
-    const crossRImpulse1 = vec3.create();
-    const impulse1 = vec3.create();
-    vec3.scale(impulse1, impulse, -1);
-    vec3.cross(crossRImpulse1, r1, impulse1);
-    const dw1 = vec3.create();
-    vec3.transformMat3(dw1, crossRImpulse1, object1.getWInvI());
-    predW1[0] += dw1[0];
-    predW1[1] += dw1[1];
-    predW1[2] += dw1[2];
-
-    const crossRImpulse2 = vec3.create();
-    const impulse2 = vec3.create();
-    vec3.scale(impulse2, impulse, 1);
-    vec3.cross(crossRImpulse2, r2, impulse2);
-    const dw2 = vec3.create();
-    vec3.transformMat3(dw2, crossRImpulse2, object2.getWInvI());
-    predW2[0] += dw2[0];
-    predW2[1] += dw2[1];
-    predW2[2] += dw2[2];
-
-    vec3.copy(object1.angularVelocity, predW1);
-    vec3.copy(object2.angularVelocity, predW2);
+    const angCorr2 = vec3.create();
+    vec3.transformMat3(angCorr2, crossR2N, object2.getWInvI());
+    vec3.scale(angCorr2, angCorr2, appliedDelta);
+    if (vec3.length(angCorr2) > 1e-12) {
+      const halfAngle = vec3.scale(vec3.create(), angCorr2, 0.5);
+      const rotQ2 = quat.create();
+      quat.setAxisAngle(
+        rotQ2,
+        vec3.normalize(vec3.create(), halfAngle),
+        vec3.length(angCorr2),
+      );
+      quat.multiply(object2.rotation, rotQ2, object2.rotation);
+      quat.normalize(object2.rotation, object2.rotation);
+    }
   }
 
   calculateAngularMomentum(I, w) {
@@ -269,30 +254,7 @@ export default class Simulation1 {
     predW[2] = object.angularVelocity[2] + dw[2];
   }
 
-  integr(object, h) {
-    object.position[0] = object.position[0] + object.velocity[0] * h;
-    object.position[1] = object.position[1] + object.velocity[1] * h;
-    object.position[2] = object.position[2] + object.velocity[2] * h;
-
-    const wquat = quat.create();
-    quat.set(
-      wquat,
-      object.angularVelocity[0],
-      object.angularVelocity[1],
-      object.angularVelocity[2],
-      0.0,
-    );
-    const dq = quat.create();
-    quat.multiply(dq, wquat, object.rotation);
-
-    object.rotation[0] = object.rotation[0] + 0.5 * dq[0] * h;
-    object.rotation[1] = object.rotation[1] + 0.5 * dq[1] * h;
-    object.rotation[2] = object.rotation[2] + 0.5 * dq[2] * h;
-
-    quat.normalize(object.rotation, object.rotation);
-  }
-
-  XPBDCalculateEffMass(m, arm, n, wInvI) {
+  calculateEffMass(m, arm, n, wInvI) {
     const crossArmN = vec3.create();
     vec3.cross(crossArmN, arm, n);
 

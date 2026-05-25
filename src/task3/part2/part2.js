@@ -44,9 +44,6 @@ const sketch1 = (p5) => {
 
     simulation.setCamera();
     timer.reset();
-
-    button = p5.createButton("Нажми меня");
-    button.position(10, 10);
   };
 
   p5.draw = () => {
