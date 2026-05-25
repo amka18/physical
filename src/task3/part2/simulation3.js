@@ -64,7 +64,7 @@ export default class Simulation1 {
     this.l0 = 200;
     this.r1 = vec3.create();
     this.r2 = vec3.create();
-    this.compliance = 0.1;
+    this.compliance = 0.0001;
     this.lambda = 0.0;
   }
 
